@@ -1,3 +1,5 @@
+from typing import Optional
+import discord
 import math
 
 from discord.ext import menus
@@ -106,3 +108,82 @@ class ContinuablePages(ViewMenuPages):
             self.current_page = page % self._source.get_max_pages()
         self.message = None
         await self.start(ctx, channel=channel, wait=wait)
+
+class DexButtons(discord.ui.View):
+    def __init__(self, author, source, images, has_gender_difference, is_shiny):
+        self.author = author
+        self.shiny = is_shiny
+        self.gender = "male"
+        self.source = source
+        self.has_gender_difference = has_gender_difference
+        self.images = images
+
+        super().__init__()
+        self.clear_items()
+        self.add_correct_buttons()
+
+
+    def add_correct_buttons(self):
+        shiny_button = self.button_shiny
+        if self.shiny:
+            shiny_button.style = discord.ButtonStyle.green
+
+        self.add_item(shiny_button)
+
+        if self.has_gender_difference:
+            self.add_item(self.button_male)
+            self.add_item(self.button_female)
+
+
+    @discord.ui.button(label="♂", style=discord.ButtonStyle.blurple)
+    async def button_male(self, ctx, button=discord.Button):
+        if ctx.user == self.author:
+            if self.shiny:
+                img = self.images["male_s"]
+            else:
+                img = self.images["male_n"]
+            self.gender = "male"
+            await self.switch_dex_gender(ctx, button, discord.ButtonStyle.blurple, 2, img)
+
+    @discord.ui.button(label="♀", style=discord.ButtonStyle.gray)
+    async def button_female(self, ctx, button=discord.Button):
+        if ctx.user == self.author:
+            if self.shiny:
+                img = self.images["female_s"]
+            else:
+                img = self.images["female_n"]
+            self.gender = "female"
+            await self.switch_dex_gender(ctx, button, discord.ButtonStyle.red, 1, img)
+
+    @discord.ui.button(label="✨", style=discord.ButtonStyle.gray)
+    async def button_shiny(self, ctx, button=discord.Button):
+        if ctx.user == self.author:
+            match self.shiny:
+                case True:
+                    if self.gender == "male":
+                        img = self.images["male_n"]
+                    else:
+                        img = self.images["female_n"]
+                    self.shiny = False
+                    button.style = discord.ButtonStyle.gray
+                    self.source.title = f"{self.source.title[:-2]}"
+                    self.source.set_image(url = img)
+                case False:
+                    if self.gender == "male":
+                        img = self.images["male_s"]
+                    else:
+                        img = self.images["female_s"]
+                    self.shiny = True
+                    button.style = discord.ButtonStyle.green
+                    self.source.title = f"{self.source.title} ✨"
+                    self.source.set_image(url = img)
+            return await ctx.response.edit_message(embed=self.source, view=self)
+
+
+    async def switch_dex_gender(self, ctx : discord.Interaction, button, colour, other_button, image):
+        button.style = colour
+        button.view.children[other_button].style = discord.ButtonStyle.gray
+        self.source.set_image(url=image)
+        return await ctx.response.edit_message(embed=self.source, view=self)
+
+    
