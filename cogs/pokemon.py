@@ -1114,11 +1114,29 @@ class Pokemon(commands.Cog):
             if species.evolution_text:
                 embed.add_field(name="Evolution", value=species.evolution_text, inline=False)
 
+            # Makes a dictionary of all the possible images
+            images = {  "male_n" : species.image_url,
+                        "male_s" : species.shiny_image_url,
+                        "female_n" : f"{species.image_url[:-9]}F{species.image_url[-9:]}",
+                        "female_s" :  f"{species.shiny_image_url[:-9]}F{species.shiny_image_url[-9:]}"}
+            
+            gender_difference = species.has_gender_differences
+
             if shiny:
-                embed.title = f"#{species.dex_number} — ✨ {species}"
-                embed.set_image(url=species.shiny_image_url)
+                embed.title = f"#{species.dex_number} — {species} ✨"
+                embed.set_image(url=images["male_s"])
+                is_shiny = True
             else:
-                embed.set_image(url=species.image_url)
+                embed.set_image(url=images["male_n"])
+                is_shiny = False
+
+            # Ads the correct button settings to the embed
+            match gender_difference:
+                case 1:
+                    view = pagination.DexButtons(ctx.author, embed, images, has_gender_difference=True, is_shiny=is_shiny)
+                case other:
+                    view = pagination.DexButtons(ctx.author, embed, images, has_gender_difference=False,is_shiny=is_shiny)
+                
 
             base_stats = (
                 f"**HP:** {species.base_stats.hp}",
@@ -1137,16 +1155,13 @@ class Pokemon(commands.Cog):
             else:
                 gender_rate = "Gender unknown..."
 
-            
-
             embed.add_field(name="Types", value="\n".join(species.types))
             embed.add_field(name="Region", value=species.region.title())
             embed.add_field(name="Catchable", value="Yes" if species.catchable else "No")
 
             embed.add_field(name="Base Stats", value="\n".join(base_stats))
             embed.add_field(name="Names", value="\n".join(f"{x} {y}" for x, y in species.names))
-            embed.add_field(name="Appearance", value=f"Height: {species.height} m\nWeight: {species.weight} kg")
-            embed.add_field(name="Gender ratio", value=f"{gender_rate}")
+            embed.add_field(name="Appearance", value=f"Height: {species.height} m\nWeight: {species.weight} kg \n{gender_rate}")
 
             text = "You haven't caught this pokémon yet!"
             if str(species.dex_number) in member.pokedex:
@@ -1156,8 +1171,8 @@ class Pokemon(commands.Cog):
                 text = f"Artwork by {species.art_credit}.\nMay be derivative of artwork © The Pokémon Company.\n" + text
 
             embed.set_footer(text=text)
-
-            await ctx.send(embed=embed)
+            
+            await ctx.send(embed=embed, view=view)
 
     @checks.has_started()
     @commands.guild_only()
