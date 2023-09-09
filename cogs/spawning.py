@@ -10,6 +10,7 @@ from discord.ext import commands, tasks
 from cogs import mongo
 from data import models
 from helpers import checks
+from helpers import constants
 from helpers.utils import write_fp
 
 
@@ -221,6 +222,44 @@ class Spawning(commands.Cog):
 
         image = None
 
+        
+        gender = None
+        print(species)
+        print(species.gender_rate)
+        
+        # REMOVE THIS ONCE feature/gender-dex-entry HAS BEEN MERGED
+        GENDER_RATES = {
+            -1 : [0, 0],
+            0 : [100, 0],
+            1 : [87.5, 12.5],
+            2 : [75, 25],
+            4 : [50, 50],
+            6 : [25, 75],
+            8 : [0, 100]
+        }
+        print(GENDER_RATES) 
+
+        gender_differences = 1 
+        # ------------------------------------------------------------
+
+        match species.gender_rate:
+            case -1:
+                gender = "none"
+            case 0:
+                gender = "male"
+            case 8:
+                gender = "female"
+            case other:
+                random_gender_chance = random.randint(1, 99)
+                print(random_gender_chance)
+                if random_gender_chance > GENDER_RATES[species.gender_rate][0]:
+                    gender = "female"
+                else:
+                    gender = "male"
+        
+        print(f"The chosen gender: {gender}")
+        
+
         if hasattr(self.bot.config, "SERVER_URL"):
             url = urljoin(self.bot.config.SERVER_URL, f"image?species={species.id}&time=")
             url += "day" if guild.is_day else "night"
@@ -243,6 +282,8 @@ class Spawning(commands.Cog):
         if redeem:
             await self.bot.redis.set(f"redeem:{channel.id}", 1)
             await self.bot.redis.expire(f"redeem:{channel.id}", 30)
+
+        await self.bot.redis.hset("gender", channel.id, gender)
 
         await channel.send(
             file=image,
@@ -305,7 +346,10 @@ class Spawning(commands.Cog):
             await self.bot.redis.hset("captcha", ctx.author.id, 1)
             await self.bot.redis.delete(f"catches:{ctx.author.id}")
 
+
         species_id = await self.bot.redis.hget("wild", ctx.channel.id)
+        gender = await self.bot.redis.hget("gender", ctx.channel.id)
+        gender = gender.decode('ASCII')
         species = self.bot.data.species_by_number(int(species_id))
 
         if models.deaccent(guess.lower().replace("′", "'")) not in species.correct_guesses:
@@ -347,6 +391,7 @@ class Spawning(commands.Cog):
                 "iv_total": sum(ivs),
                 "moves": moves[:4],
                 "shiny": shiny,
+                "gender": gender,
                 "idx": await self.bot.mongo.fetch_next_idx(ctx.author),
             }
         )
