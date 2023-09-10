@@ -45,6 +45,7 @@ class PokemonBase(MixinDocument):
     xp = fields.IntegerField(required=True)
     nature = fields.StringField(required=True)
     shiny = fields.BooleanField(required=True)
+    gender = fields.StringField(required=True)
 
     # Stats
     iv_hp = fields.IntegerField(required=True)

@@ -479,17 +479,33 @@ class Pokemon(commands.Cog):
                     break
 
             embed = self.bot.Embed(color=pokemon.color or 0x9CCFFF, title=f"{pokemon:lnf}")
+    
+            ## REMOVE THIS ONES ITS MADE IN CONSTANT.PY
+            images = {  "version_1_n" : pokemon.species.image_url,
+                        "version_1_s" : pokemon.species.shiny_image_url,
+                        "version_2_n" : f"{pokemon.species.image_url[:-9]}F{pokemon.species.image_url[-9:]}",
+                        "version_2_s" :  f"{pokemon.species.shiny_image_url[:-9]}F{pokemon.species.shiny_image_url[-9:]}"}
 
-            if pokemon.shiny:
-                embed.set_image(url=pokemon.species.shiny_image_url)
+            has_gender_differences = 0
+            ## ------
+
+            # replace with this
+            #pokemon.species.has_gender_differences
+
+            if has_gender_differences == 1:
+                gender_suffix = "_s" if pokemon.shiny else "_n"
+                image_key = f"version_{2 if pokemon.gender == 'female' else 1}{gender_suffix}"
             else:
-                embed.set_image(url=pokemon.species.image_url)
+                image_key = f"version_1{'_s' if pokemon.shiny else '_n'}"
+
+            embed.set_image(url=images[image_key])
 
             embed.set_thumbnail(url=ctx.author.display_avatar.url)
 
             info = (
                 f"**XP:** {pokemon.xp}/{pokemon.max_xp}",
                 f"**Nature:** {pokemon.nature}",
+                f"**Gender:** {pokemon.gender}"
             )
 
             embed.add_field(name="Details", value="\n".join(info), inline=False)
@@ -502,6 +518,7 @@ class Pokemon(commands.Cog):
                 f"**Sp. Def:** {pokemon.sdef} – IV: {pokemon.iv_sdef}/31",
                 f"**Speed:** {pokemon.spd} – IV: {pokemon.iv_spd}/31",
                 f"**Total IV:** {pokemon.iv_percentage * 100:.2f}%",
+
             )
 
             embed.add_field(name="Stats", value="\n".join(stats), inline=False)
