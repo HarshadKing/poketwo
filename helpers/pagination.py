@@ -110,13 +110,12 @@ class ContinuablePages(ViewMenuPages):
         await self.start(ctx, channel=channel, wait=wait)
 
 class DexButtons(discord.ui.View):
-    def __init__(self, author, source, images, has_gender_difference, is_shiny):
+    def __init__(self, author, source, species, is_shiny):
         self.author = author
+        self.source = source
+        self.species = species
         self.shiny = is_shiny
         self.gender = "male"
-        self.source = source
-        self.has_gender_difference = has_gender_difference
-        self.images = images
 
         super().__init__()
         self.clear_items()
@@ -130,7 +129,7 @@ class DexButtons(discord.ui.View):
 
         self.add_item(shiny_button)
 
-        if self.has_gender_difference:
+        if self.species.has_gender_differences == 1:
             self.add_item(self.button_male)
             self.add_item(self.button_female)
 
@@ -139,9 +138,9 @@ class DexButtons(discord.ui.View):
     async def button_male(self, ctx, button=discord.Button):
         if ctx.user == self.author:
             if self.shiny:
-                img = self.images["male_s"]
+                img = self.species.shiny_image_url
             else:
-                img = self.images["male_n"]
+                img = self.species.image_url
             self.gender = "male"
             await self.switch_dex_gender(ctx, button, discord.ButtonStyle.blurple, 2, img)
 
@@ -149,9 +148,9 @@ class DexButtons(discord.ui.View):
     async def button_female(self, ctx, button=discord.Button):
         if ctx.user == self.author:
             if self.shiny:
-                img = self.images["female_s"]
+                img = self.species.shiny_image_url_female
             else:
-                img = self.images["female_n"]
+                img = self.species.image_url_female
             self.gender = "female"
             await self.switch_dex_gender(ctx, button, discord.ButtonStyle.red, 1, img)
 
@@ -161,24 +160,24 @@ class DexButtons(discord.ui.View):
             match self.shiny:
                 case True:
                     if self.gender == "male":
-                        img = self.images["male_n"]
+                        img = self.species.image_url
                     else:
-                        img = self.images["female_n"]
+                        img = self.species.image_url_female
                     self.shiny = False
-                    button.style = discord.ButtonStyle.gray
-                    self.source.title = f"{self.source.title[:-2]}"
-                    self.source.set_image(url = img)
+                    await self.switch_dex_shiny(ctx, button, discord.ButtonStyle.gray, f"{self.source.title[:-2]}",  img)
                 case False:
                     if self.gender == "male":
-                        img = self.images["male_s"]
+                        img = self.species.shiny_image_url
                     else:
-                        img = self.images["female_s"]
+                        img = self.species.shiny_image_url_female
                     self.shiny = True
-                    button.style = discord.ButtonStyle.green
-                    self.source.title = f"{self.source.title} ✨"
-                    self.source.set_image(url = img)
-            return await ctx.response.edit_message(embed=self.source, view=self)
+                    await self.switch_dex_shiny(ctx, button, discord.ButtonStyle.green, f"{self.source.title} ✨",  img)
 
+    async def switch_dex_shiny(self, ctx: discord.Interaction, button, colour, title, image):
+        button.style = colour
+        self.source.set_image(url=image)
+        self.source.title = title
+        return await ctx.response.edit_message(embed=self.source, view=self)
 
     async def switch_dex_gender(self, ctx : discord.Interaction, button, colour, other_button, image):
         button.style = colour
