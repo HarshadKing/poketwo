@@ -222,19 +222,19 @@ class Spawning(commands.Cog):
         image = None
 
         
-        gender = "unknown"
+        gender = "Unknown"
         match species.gender_rate:
             case 0:
-                gender = "male"
+                gender = "Male"
             case 8:
-                gender = "female"
+                gender = "Female"
             case other:
                 random_gender_chance = random.randint(1, 99)
                 print(random_gender_chance)
                 if random_gender_chance > species.gender_ratios[0]:
-                    gender = "female"
+                    gender = "Female"
                 else:
-                    gender = "male"
+                    gender = "Male"
 
         if hasattr(self.bot.config, "SERVER_URL"):
             url = urljoin(self.bot.config.SERVER_URL, f"image?species={species.id}&time=")
