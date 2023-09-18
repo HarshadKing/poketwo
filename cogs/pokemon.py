@@ -480,25 +480,10 @@ class Pokemon(commands.Cog):
 
             embed = self.bot.Embed(color=pokemon.color or 0x9CCFFF, title=f"{pokemon:lnf}")
     
-            ## REMOVE THIS ONES ITS MADE IN CONSTANT.PY
-            images = {  "version_1_n" : pokemon.species.image_url,
-                        "version_1_s" : pokemon.species.shiny_image_url,
-                        "version_2_n" : f"{pokemon.species.image_url[:-9]}F{pokemon.species.image_url[-9:]}",
-                        "version_2_s" :  f"{pokemon.species.shiny_image_url[:-9]}F{pokemon.species.shiny_image_url[-9:]}"}
-
-            has_gender_differences = 0
-            ## ------
-
-            # replace with this
-            #pokemon.species.has_gender_differences
-
-            if has_gender_differences == 1:
-                gender_suffix = "_s" if pokemon.shiny else "_n"
-                image_key = f"version_{2 if pokemon.gender == 'female' else 1}{gender_suffix}"
-            else:
-                image_key = f"version_1{'_s' if pokemon.shiny else '_n'}"
-
-            embed.set_image(url=images[image_key])
+            image = pokemon.species.shiny_image_url if pokemon.shiny else pokemon.species.image_url
+            if pokemon.species.has_gender_differences == 1 and pokemon.gender == 'female':
+                image = pokemon.species.shiny_image_url_female if pokemon.shiny else pokemon.species.image_url_female
+            embed.set_image(url=image)
 
             embed.set_thumbnail(url=ctx.author.display_avatar.url)
 
