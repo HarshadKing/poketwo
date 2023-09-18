@@ -10,7 +10,6 @@ from discord.ext import commands, tasks
 from cogs import mongo
 from data import models
 from helpers import checks
-from helpers import constants
 from helpers.utils import write_fp
 
 
@@ -223,28 +222,8 @@ class Spawning(commands.Cog):
         image = None
 
         
-        gender = None
-        print(species)
-        print(species.gender_rate)
-        
-        # REMOVE THIS ONCE feature/gender-dex-entry HAS BEEN MERGED
-        GENDER_RATES = {
-            -1 : [0, 0],
-            0 : [100, 0],
-            1 : [87.5, 12.5],
-            2 : [75, 25],
-            4 : [50, 50],
-            6 : [25, 75],
-            8 : [0, 100]
-        }
-        print(GENDER_RATES) 
-
-        gender_differences = 1 
-        # ------------------------------------------------------------
-
+        gender = "unknown"
         match species.gender_rate:
-            case -1:
-                gender = "none"
             case 0:
                 gender = "male"
             case 8:
@@ -252,13 +231,10 @@ class Spawning(commands.Cog):
             case other:
                 random_gender_chance = random.randint(1, 99)
                 print(random_gender_chance)
-                if random_gender_chance > GENDER_RATES[species.gender_rate][0]:
+                if random_gender_chance > species.gender_ratios[0]:
                     gender = "female"
                 else:
                     gender = "male"
-        
-        print(f"The chosen gender: {gender}")
-        
 
         if hasattr(self.bot.config, "SERVER_URL"):
             url = urljoin(self.bot.config.SERVER_URL, f"image?species={species.id}&time=")
