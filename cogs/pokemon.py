@@ -1113,28 +1113,20 @@ class Pokemon(commands.Cog):
             if species.evolution_text:
                 embed.add_field(name="Evolution", value=species.evolution_text, inline=False)
 
-            # Makes a dictionary of all the possible images
-            images = {  "male_n" : species.image_url,
-                        "male_s" : species.shiny_image_url,
-                        "female_n" : f"{species.image_url[:-9]}F{species.image_url[-9:]}",
-                        "female_s" :  f"{species.shiny_image_url[:-9]}F{species.shiny_image_url[-9:]}"}
-            
-            gender_difference = species.has_gender_differences
-
             if shiny:
                 embed.title = f"#{species.dex_number} — {species} ✨"
-                embed.set_image(url=images["male_s"])
+                embed.set_image(url=species.shiny_image_url)
                 is_shiny = True
             else:
-                embed.set_image(url=images["male_n"])
+                embed.set_image(url=species.image_url)
                 is_shiny = False
 
             # Ads the correct button settings to the embed
-            match gender_difference:
+            match species.has_gender_differences:
                 case 1:
-                    view = pagination.DexButtons(ctx.author, embed, images, has_gender_difference=True, is_shiny=is_shiny)
+                    view = pagination.DexButtons(ctx.author, embed, species, is_shiny=is_shiny)
                 case other:
-                    view = pagination.DexButtons(ctx.author, embed, images, has_gender_difference=False,is_shiny=is_shiny)
+                    view = pagination.DexButtons(ctx.author, embed, species, is_shiny=is_shiny)
                 
 
             base_stats = (
@@ -1148,7 +1140,7 @@ class Pokemon(commands.Cog):
 
             if species.gender_rate:
                 if species.gender_rate != -1:
-                    gender_rate = f":male_sign: {constants.GENDER_RATES[species.gender_rate][0]}% - :female_sign: {constants.GENDER_RATES[species.gender_rate][1]}%"
+                    gender_rate = f":male_sign: {species.gender_ratios[0]}% - :female_sign: {species.gender_ratios[1]}%"
                 else:
                     gender_rate = "Gender unknown..."
             else:
@@ -1160,7 +1152,8 @@ class Pokemon(commands.Cog):
 
             embed.add_field(name="Base Stats", value="\n".join(base_stats))
             embed.add_field(name="Names", value="\n".join(f"{x} {y}" for x, y in species.names))
-            embed.add_field(name="Appearance", value=f"Height: {species.height} m\nWeight: {species.weight} kg \n{gender_rate}")
+            embed.add_field(name="Appearance", value=f"Height: {species.height} m\nWeight: {species.weight} kg")
+            embed.add_field(name="Gender Ratio", value=f"{gender_rate}")
 
             text = "You haven't caught this pokémon yet!"
             if str(species.dex_number) in member.pokedex:
