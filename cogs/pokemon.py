@@ -481,7 +481,7 @@ class Pokemon(commands.Cog):
             embed = self.bot.Embed(color=pokemon.color or 0x9CCFFF, title=f"{pokemon:lnf}")
     
             image = pokemon.species.shiny_image_url if pokemon.shiny else pokemon.species.image_url
-            if pokemon.species.has_gender_differences == 1 and pokemon.gender == 'female':
+            if pokemon.species.has_gender_differences == 1 and pokemon.gender == 'Female':
                 image = pokemon.species.shiny_image_url_female if pokemon.shiny else pokemon.species.image_url_female
             embed.set_image(url=image)
 
