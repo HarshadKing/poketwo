@@ -503,7 +503,6 @@ class Pokemon(commands.Cog):
                 f"**Sp. Def:** {pokemon.sdef} – IV: {pokemon.iv_sdef}/31",
                 f"**Speed:** {pokemon.spd} – IV: {pokemon.iv_spd}/31",
                 f"**Total IV:** {pokemon.iv_percentage * 100:.2f}%",
-
             )
 
             embed.add_field(name="Stats", value="\n".join(stats), inline=False)
