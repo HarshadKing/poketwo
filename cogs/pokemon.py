@@ -479,17 +479,18 @@ class Pokemon(commands.Cog):
                     break
 
             embed = self.bot.Embed(color=pokemon.color or 0x9CCFFF, title=f"{pokemon:lnf}")
-
-            if pokemon.shiny:
-                embed.set_image(url=pokemon.species.shiny_image_url)
-            else:
-                embed.set_image(url=pokemon.species.image_url)
+    
+            image = pokemon.species.shiny_image_url if pokemon.shiny else pokemon.species.image_url
+            if pokemon.species.has_gender_differences == 1 and pokemon.gender == 'Female':
+                image = pokemon.species.shiny_image_url_female if pokemon.shiny else pokemon.species.image_url_female
+            embed.set_image(url=image)
 
             embed.set_thumbnail(url=ctx.author.display_avatar.url)
 
             info = (
                 f"**XP:** {pokemon.xp}/{pokemon.max_xp}",
                 f"**Nature:** {pokemon.nature}",
+                f"**Gender:** {pokemon.gender}"
             )
 
             embed.add_field(name="Details", value="\n".join(info), inline=False)
