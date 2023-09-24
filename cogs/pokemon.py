@@ -1123,13 +1123,8 @@ class Pokemon(commands.Cog):
                 is_shiny = False
 
             # Ads the correct button settings to the embed
-            match species.has_gender_differences:
-                case 1:
-                    view = pagination.DexButtons(ctx.author, embed, species, is_shiny=is_shiny)
-                case other:
-                    view = pagination.DexButtons(ctx.author, embed, species, is_shiny=is_shiny)
+            view = pagination.DexButtons(ctx, embed, species, is_shiny=is_shiny)
                 
-
             base_stats = (
                 f"**HP:** {species.base_stats.hp}",
                 f"**Attack:** {species.base_stats.atk}",
