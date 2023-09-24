@@ -699,7 +699,6 @@ class Pokemon(commands.Cog):
         mons = list()
 
         for pokemon in args:
-
             if pokemon is not None:
                 # can't release selected/fav
 
@@ -1032,7 +1031,9 @@ class Pokemon(commands.Cog):
 
                 # Send embed
 
-                embed = self.bot.Embed(title=f"Your pokédex", description=f"You've caught {num} out of {total_count} pokémon!")
+                embed = self.bot.Embed(
+                    title=f"Your pokédex", description=f"You've caught {num} out of {total_count} pokémon!"
+                )
 
                 embed.set_footer(text=f"Showing {pgstart + 1}–{pgend} out of {len(pokedex)}.")
 
@@ -1123,7 +1124,7 @@ class Pokemon(commands.Cog):
 
             # Ads the correct button settings to the embed
             view = pagination.DexButtons(ctx, embed, species, is_shiny=is_shiny)
-                
+
             base_stats = (
                 f"**HP:** {species.base_stats.hp}",
                 f"**Attack:** {species.base_stats.atk}",
@@ -1158,7 +1159,7 @@ class Pokemon(commands.Cog):
                 text = f"Artwork by {species.art_credit}.\nMay be derivative of artwork © The Pokémon Company.\n" + text
 
             embed.set_footer(text=text)
-            
+
             await ctx.send(embed=embed, view=view)
 
     @checks.has_started()
