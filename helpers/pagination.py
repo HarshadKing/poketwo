@@ -109,6 +109,7 @@ class ContinuablePages(ViewMenuPages):
         self.message = None
         await self.start(ctx, channel=channel, wait=wait)
 
+
 class DexButtons(discord.ui.View):
     def __init__(self, ctx, source, species, is_shiny):
         self.ctx = ctx
@@ -121,7 +122,7 @@ class DexButtons(discord.ui.View):
         if self.shiny:
             self.children[0].style = discord.ButtonStyle.green
         self.add_correct_buttons()
-    
+
     async def interaction_check(self, interaction):
         if interaction.user.id != self.ctx.author.id:
             await interaction.response.send_message("You can't use this!", ephemeral=True)
@@ -134,7 +135,6 @@ class DexButtons(discord.ui.View):
             button_female = GenderButton(label="♀", style=discord.ButtonStyle.gray)
             self.add_item(button_male)
             self.add_item(button_female)
-    
 
     @discord.ui.button(label="✨", style=discord.ButtonStyle.gray)
     async def button_shiny(self, ctx, button=discord.Button):
@@ -145,8 +145,7 @@ class DexButtons(discord.ui.View):
         self.source.set_image(url=img)
         return await ctx.response.edit_message(embed=self.source, view=self)
 
-                    
-    async def select_gender(self, ctx : discord.Interaction, button, gender):
+    async def select_gender(self, ctx: discord.Interaction, button, gender):
         img = self.species.get_gender_image_url(self.shiny, gender)
         style = discord.ButtonStyle.blurple if gender == "♂" else discord.ButtonStyle.red
         button_index = 2 if gender == "♂" else 1
@@ -157,10 +156,10 @@ class DexButtons(discord.ui.View):
         self.source.set_image(url=img)
         return await ctx.response.edit_message(embed=self.source, view=self)
 
+
 class GenderButton(discord.ui.Button):
     def __init__(self, label, style):
         super().__init__(label=label, style=style)
 
     async def callback(self, interaction):
         await self.view.select_gender(interaction, self, self.label)
-    
