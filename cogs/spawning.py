@@ -10,6 +10,7 @@ from discord.ext import commands, tasks
 from cogs import mongo
 from data import models
 from helpers import checks
+from helpers import genders
 from helpers.utils import write_fp
 
 
@@ -221,20 +222,7 @@ class Spawning(commands.Cog):
 
         image = None
 
-        
-        gender = "Unknown"
-        match species.gender_rate:
-            case 0:
-                gender = "Male"
-            case 8:
-                gender = "Female"
-            case other:
-                random_gender_chance = random.randint(1, 99)
-                print(random_gender_chance)
-                if random_gender_chance > species.gender_ratios[0]:
-                    gender = "Female"
-                else:
-                    gender = "Male"
+        gender = genders.generate_gender(species)
 
         if hasattr(self.bot.config, "SERVER_URL"):
             url = urljoin(self.bot.config.SERVER_URL, f"image?species={species.id}&time=")
@@ -322,10 +310,9 @@ class Spawning(commands.Cog):
             await self.bot.redis.hset("captcha", ctx.author.id, 1)
             await self.bot.redis.delete(f"catches:{ctx.author.id}")
 
-
         species_id = await self.bot.redis.hget("wild", ctx.channel.id)
         gender = await self.bot.redis.hget("gender", ctx.channel.id)
-        gender = gender.decode('ASCII')
+        gender = gender.decode("ASCII")
         species = self.bot.data.species_by_number(int(species_id))
 
         if models.deaccent(guess.lower().replace("′", "'")) not in species.correct_guesses:
