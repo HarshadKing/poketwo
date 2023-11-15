@@ -10,6 +10,7 @@ from discord.ext import commands, tasks
 from cogs import mongo
 from data import models
 from helpers import checks
+from helpers import genders
 from helpers.utils import write_fp
 
 
@@ -221,6 +222,8 @@ class Spawning(commands.Cog):
 
         image = None
 
+        gender = genders.generate_gender(species)
+
         if hasattr(self.bot.config, "SERVER_URL"):
             url = urljoin(self.bot.config.SERVER_URL, f"image?species={species.id}&time=")
             url += "day" if guild.is_day else "night"
@@ -243,6 +246,8 @@ class Spawning(commands.Cog):
         if redeem:
             await self.bot.redis.set(f"redeem:{channel.id}", 1)
             await self.bot.redis.expire(f"redeem:{channel.id}", 30)
+
+        await self.bot.redis.hset("gender", channel.id, gender)
 
         await channel.send(
             file=image,
@@ -306,6 +311,8 @@ class Spawning(commands.Cog):
             await self.bot.redis.delete(f"catches:{ctx.author.id}")
 
         species_id = await self.bot.redis.hget("wild", ctx.channel.id)
+        gender = await self.bot.redis.hget("gender", ctx.channel.id)
+        gender = gender.decode("ASCII")
         species = self.bot.data.species_by_number(int(species_id))
 
         if models.deaccent(guess.lower().replace("′", "'")) not in species.correct_guesses:
@@ -347,6 +354,7 @@ class Spawning(commands.Cog):
                 "iv_total": sum(ivs),
                 "moves": moves[:4],
                 "shiny": shiny,
+                "gender": gender,
                 "idx": await self.bot.mongo.fetch_next_idx(ctx.author),
             }
         )
