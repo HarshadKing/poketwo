@@ -479,9 +479,9 @@ class Pokemon(commands.Cog):
                     break
 
             embed = self.bot.Embed(color=pokemon.color or 0x9CCFFF, title=f"{pokemon:lnf}")
-    
+
             image = pokemon.species.shiny_image_url if pokemon.shiny else pokemon.species.image_url
-            if pokemon.species.has_gender_differences == 1 and pokemon.gender == 'Female':
+            if pokemon.species.has_gender_differences == 1 and pokemon.gender == "Female":
                 image = pokemon.species.shiny_image_url_female if pokemon.shiny else pokemon.species.image_url_female
             embed.set_image(url=image)
 
@@ -490,7 +490,7 @@ class Pokemon(commands.Cog):
             info = (
                 f"**XP:** {pokemon.xp}/{pokemon.max_xp}",
                 f"**Nature:** {pokemon.nature}",
-                f"**Gender:** {pokemon.gender}"
+                f"**Gender:** {pokemon.gender}",
             )
 
             embed.add_field(name="Details", value="\n".join(info), inline=False)
@@ -1124,7 +1124,7 @@ class Pokemon(commands.Cog):
                 is_shiny = False
 
             # Ads the correct button settings to the embed
-            view = pagination.DexButtons(ctx, embed, species, is_shiny=is_shiny)
+            view = pagination.DexButtons(ctx, embed=embed, species=species, is_shiny=is_shiny)
 
             base_stats = (
                 f"**HP:** {species.base_stats.hp}",
