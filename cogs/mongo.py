@@ -176,9 +176,13 @@ class PokemonBase(MixinDocument):
         if self.species.evolution_to is None or self.held_item == 13001:
             return None
 
-        possible = []
+        possible = []       
+
 
         for evo in self.species.evolution_to.items:
+            print(evo.trigger.gender)
+            print(self.gender)
+
             if not isinstance(evo.trigger, models.LevelTrigger):
                 continue
 
@@ -202,6 +206,9 @@ class PokemonBase(MixinDocument):
             if evo.trigger.relative_stats == -1 and self.defn <= self.atk:
                 can = False
             if evo.trigger.relative_stats == 0 and self.atk != self.defn:
+                can = False
+            if evo.trigger.gender != self.gender and evo.trigger.gender != None:
+                print(f"Can't evole to {evo.target.name}")
                 can = False
 
             if can:
