@@ -81,19 +81,13 @@ CHRISTMAS_PREFIX = "christmas_2023_"
 
 # TODO: FINALIZE CHANCES
 PRESENTS_ID = f"{CHRISTMAS_PREFIX}presents"
-PRESENT_CHANCES = {
-    "pc": 0.25,
-    "shards": 0.1,
-    "event": 0.48,
-    "rare": 0.12,
-    "80iv-pokemon": 0.05
-}
+PRESENT_CHANCES = {"pc": 0.25, "shards": 0.1, "event": 0.48, "rare": 0.12, "80iv-pokemon": 0.05}
 PRESENT_REWARD_AMOUNTS = {
     "pc": range(2000, 4000),
     "shards": range(10, 40),
     "event": [1],
     "rare": [1],
-    "80iv-pokemon": [1]
+    "80iv-pokemon": [1],
 }
 
 EVENT_CHANCES = {
@@ -155,7 +149,7 @@ class Christmas(commands.Cog):
         *,
         species: Species,
         shiny_boost: Optional[int] = 1,
-        minimum_iv_percent: Optional[int] = 0  # Minimum IV percentage 0-100
+        minimum_iv_percent: Optional[int] = 0,  # Minimum IV percentage 0-100
     ):
         ivs = [mongo.random_iv() for _ in range(6)]
         if minimum_iv_percent:
@@ -390,11 +384,7 @@ class Christmas(commands.Cog):
 
     @checks.has_started()
     @christmas.command()
-    async def open(
-        self,
-        ctx: PoketwoContext,
-        qty: Optional[int] = 1
-    ):
+    async def open(self, ctx: PoketwoContext, qty: Optional[int] = 1):
 
         if qty <= 0:
             return await ctx.send(f"Nice try...")
@@ -454,7 +444,13 @@ class Christmas(commands.Cog):
                     species = random.choices(population, weights, k=1)[0]
                     # TODO: Finalize shiny boost
                     # TODO: Implement min_iv
-                    pokemon = await self.make_pokemon(ctx.author, member, species=species, shiny_boost=shiny_boost, minimum_iv_percent=minimum_iv_percent)
+                    pokemon = await self.make_pokemon(
+                        ctx.author,
+                        member,
+                        species=species,
+                        shiny_boost=shiny_boost,
+                        minimum_iv_percent=minimum_iv_percent,
+                    )
                     pokemon_obj = self.bot.mongo.Pokemon.build_from_mongo(pokemon)
 
                     text.append(f"- {pokemon_obj:liP} **({reward.upper()})**")  # TODO: Remove suffix
