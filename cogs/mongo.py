@@ -350,12 +350,12 @@ class Member(Document):
     halloween_2023_sigil_foliage = fields.IntegerField(default=0)
     halloween_2023_sigil_snaring = fields.IntegerField(default=0)
 
-    halloween_2023_milestone_contribution_searching_golurk = fields.FloatField(default=0.0)  # TODO: Finalize type
-    halloween_2023_milestone_contribution_helping_flames = fields.FloatField(default=0.0)  # TODO: Finalize type
-    halloween_2023_milestone_contribution_helping_shadows = fields.FloatField(default=0.0)  # TODO: Finalize type
-    halloween_2023_milestone_contribution_helping_foliage = fields.FloatField(default=0.0)  # TODO: Finalize type
-    halloween_2023_milestone_contribution_helping_snaring = fields.FloatField(default=0.0)  # TODO: Finalize type
-    halloween_2023_milestone_contribution_saving_golurk = fields.FloatField(default=0.0)  # TODO: Finalize type
+    halloween_2023_milestone_contribution_searching_golurk = fields.FloatField(default=0.0)
+    halloween_2023_milestone_contribution_helping_flames = fields.FloatField(default=0.0)
+    halloween_2023_milestone_contribution_helping_shadows = fields.FloatField(default=0.0)
+    halloween_2023_milestone_contribution_helping_foliage = fields.FloatField(default=0.0)
+    halloween_2023_milestone_contribution_helping_snaring = fields.FloatField(default=0.0)
+    halloween_2023_milestone_contribution_saving_golurk = fields.FloatField(default=0.0)
 
     christmas_2023_level = fields.IntegerField(default=0)
     christmas_2023_xp = fields.IntegerField(default=0)
