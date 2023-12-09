@@ -11,7 +11,7 @@ from cogs.mongo import Member, Pokemon
 from data.models import Species
 from helpers import checks, pagination
 from helpers.context import PoketwoContext
-from helpers.converters import ItemAndQuantityConverter
+from helpers.converters import FetchUserConverter
 from helpers.utils import FlavorString
 
 if TYPE_CHECKING:
@@ -96,7 +96,7 @@ class FlavorStrings:
 
 # Command strings
 CMD_CHRISTMAS = "`{0} christmas`"
-CMD_OPEN = "`{0} christmas open <qty>`"
+CMD_OPEN = "`{0} christmas open [qty=1]`"
 
 
 class Christmas(commands.Cog):
@@ -321,6 +321,18 @@ class Christmas(commands.Cog):
 
         await ctx.send(embed=embed)
 
+    @commands.is_owner()
+    @christmas.command(aliases=("givepresent", "gp"))
+    async def addpresent(
+        self,
+        ctx: PoketwoContext,
+        user: FetchUserConverter,
+        qty: Optional[int] = 1,
+    ):
+        """Give presents to a user."""
+
+        await self.bot.mongo.update_member(user, {"$inc": {PRESENTS_ID: qty}})
+        await ctx.send(f"Gave **{user}** {qty}x {FlavorStrings.present}.")
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Christmas(bot))
