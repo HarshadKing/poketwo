@@ -313,7 +313,7 @@ class Christmas(commands.Cog):
             name=f"{FlavorStrings.present:s} — {member[PRESENTS_ID]:,}",
             value=(
                 f"> {CMD_OPEN.format(prefix)}\n"
-                f"You will earn a present for every level you complete after completing the {FlavorStrings.pokepass}!"
+                f"You will earn a present for every {FlavorStrings.pokepass} level you complete after completing the {FlavorStrings.pokepass}!"
                 f" These presents hold the various rewards that were available in the main levels of the {FlavorStrings.pokepass}."
             ),
             inline=False,
