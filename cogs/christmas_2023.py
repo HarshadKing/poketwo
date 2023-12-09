@@ -1,13 +1,15 @@
 from __future__ import annotations
+from functools import cached_property
+import math
 
 import random
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Dict, List, Optional
 
 import discord
 from discord.ext import commands
 
 from cogs import mongo
-from cogs.mongo import Member, Pokemon
+from cogs.mongo import Member
 from data.models import Species
 from helpers import checks, pagination
 from helpers.context import PoketwoContext
@@ -77,7 +79,39 @@ BADGE_NAME = "christmas_2023"
 
 CHRISTMAS_PREFIX = "christmas_2023_"
 
+# TODO: FINALIZE CHANCES
 PRESENTS_ID = f"{CHRISTMAS_PREFIX}presents"
+PRESENT_CHANCES = {
+    "pc": 0.25,
+    "shards": 0.1,
+    "event": 0.48,
+    "rare": 0.12,
+    "80iv-pokemon": 0.05
+}
+PRESENT_REWARD_AMOUNTS = {
+    "pc": range(2000, 4000),
+    "shards": range(10, 40),
+    "event": [1],
+    "rare": [1],
+    "80iv-pokemon": [1]
+}
+
+EVENT_CHANCES = {
+    # These have been separated for ease of use
+    965: 0.11 / PRESENT_CHANCES["event"],  # TODO: Train Varoom ID
+    928: 0.096 / PRESENT_CHANCES["event"],  # TODO: Christmas Tree Smolliv ID
+    149: 0.096 / PRESENT_CHANCES["event"],  # TODO: Conductor Dragonite ID
+    929: 0.072 / PRESENT_CHANCES["event"],  # TODO: Christmas Tree Dolliv ID
+    311: 0.068 / PRESENT_CHANCES["event"],  # TODO: Pyjama Plusle & Minun ID
+    930: 0.038 / PRESENT_CHANCES["event"],  # TODO: Christmas Tree Arboliva ID
+    789: 0.01 / PRESENT_CHANCES["event"],  # TODO: Fireworks Cosmog ID
+}
+EVENT_REWARDS = [*EVENT_CHANCES.keys()]
+EVENT_WEIGHTS = [*EVENT_CHANCES.values()]
+
+PRESENT_REWARDS = [*PRESENT_CHANCES.keys()]
+PRESENT_WEIGHTS = [*PRESENT_CHANCES.values()]
+
 
 class FlavorStrings:
     """Holds various flavor strings"""
@@ -105,10 +139,30 @@ class Christmas(commands.Cog):
     def __init__(self, bot):
         self.bot: ClusterBot = bot
 
+    @cached_property
+    def pools(self) -> Dict[str, List[Species]]:
+        p = {
+            "event": EVENT_REWARDS,
+            "rare": self.bot.data.list_mythical + self.bot.data.list_legendary + self.bot.data.list_ub,
+            "non-event": self.bot.data.pokemon.keys(),
+        }
+        return {k: [self.bot.data.species_by_number(i) for i in v] for k, v in p.items()}
+
     async def make_pokemon(
-        self, owner: discord.User | discord.Member, member: Member, *, species: Species, shiny_boost: Optional[int] = 1
+        self,
+        owner: discord.User | discord.Member,
+        member: Member,
+        *,
+        species: Species,
+        shiny_boost: Optional[int] = 1,
+        minimum_iv_percent: Optional[int] = 0  # Minimum IV percentage 0-100
     ):
         ivs = [mongo.random_iv() for _ in range(6)]
+        if minimum_iv_percent:
+            min_iv = math.ceil(minimum_iv_percent / 100 * 186)
+            while sum(ivs) < min_iv:  # TODO: Use a better method to do this
+                ivs = [mongo.random_iv() for _ in range(6)]
+
         shiny = member.determine_shiny(species, boost=shiny_boost)
         return {
             "owner_id": member.id,
@@ -332,7 +386,87 @@ class Christmas(commands.Cog):
         """Give presents to a user."""
 
         await self.bot.mongo.update_member(user, {"$inc": {PRESENTS_ID: qty}})
-        await ctx.send(f"Gave **{user}** {qty}x {FlavorStrings.present}.")
+        await ctx.send(f"Gave **{user}** {qty}x {FlavorStrings.present:b}.")
+
+    @checks.has_started()
+    @christmas.command()
+    async def open(
+        self,
+        ctx: PoketwoContext,
+        qty: Optional[int] = 1
+    ):
+
+        if qty <= 0:
+            return await ctx.send(f"Nice try...")
+        elif qty > 15:
+            return await ctx.send(f"You can only open up to 15 {FlavorStrings.present:s!e} at once!")
+
+        member = await self.bot.mongo.fetch_member_info(ctx.author)
+
+        presents = member[PRESENTS_ID]
+
+        if presents < qty:
+            return await ctx.send(
+                f"You don't have enough {FlavorStrings.present:sb}! {FlavorStrings.present:sb!e} are earned by completing {FlavorStrings.pokepass} levels after completing the {FlavorStrings.pokepass}."
+            )
+
+        # GO
+        await self.bot.mongo.update_member(ctx.author, {"$inc": {PRESENTS_ID: -qty}})
+
+        embed = self.bot.Embed(
+            title=f"You open {qty} {FlavorStrings.present:{'s' if qty > 1 else ''}}...",
+            description=None,
+        )
+        embed.set_author(icon_url=ctx.author.display_avatar.url, name=str(ctx.author))
+
+        update = {"$inc": {"balance": 0, "premium_balance": 0}}
+        inserts = []
+        text = []
+
+        for reward in random.choices(PRESENT_REWARDS, weights=PRESENT_WEIGHTS, k=qty):
+            count = random.choice(PRESENT_REWARD_AMOUNTS[reward])
+
+            match reward:
+                case "pc":
+                    text.append(f"- {count} {FlavorStrings.pokecoins:!e}")
+                    update["$inc"]["balance"] += count
+                case "shards":
+                    text.append(f"- {count} {FlavorStrings.shards:!e}")
+                    update["$inc"]["premium_balance"] += count
+                case "event" | "rare" | "80iv-pokemon":
+                    shiny_boost = 1
+                    minimum_iv_percent = 0
+                    match reward:
+                        case "event":
+                            population = self.pools["event"]
+                            weights = EVENT_CHANCES
+                            shiny_boost = 20
+                        case "rare":
+                            pool = [x for x in self.pools["rare"] if x.catchable]
+                            population = pool
+                            weights = [x.abundance for x in pool]
+                        case "80iv-pokemon":
+                            pool = [x for x in self.pools["non-event"] if x.catchable]
+                            population = pool
+                            weights = [x.abundance for x in pool]
+                            minimum_iv_percent = 80
+
+                    species = random.choices(population, weights, k=1)[0]
+                    # TODO: Finalize shiny boost
+                    # TODO: Implement min_iv
+                    pokemon = await self.make_pokemon(ctx.author, member, species=species, shiny_boost=shiny_boost, minimum_iv_percent=minimum_iv_percent)
+                    pokemon_obj = self.bot.mongo.Pokemon.build_from_mongo(pokemon)
+
+                    text.append(f"- {pokemon_obj:liP} **({reward.upper()})**")  # TODO: Remove suffix
+                    inserts.append(pokemon)
+
+        await self.bot.mongo.update_member(ctx.author, update)
+        if len(inserts) > 0:
+            await self.bot.mongo.db.pokemon.insert_many(inserts)
+
+        embed.description = "\n".join(text)
+        await ctx.reply(embed=embed, mention_author=False)
+
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Christmas(bot))
