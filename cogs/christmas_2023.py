@@ -75,9 +75,14 @@ XP_REQUIREMENT = {"base": 1000, "extra": 500}
 BADGE_NAME = "christmas_2023"
 
 
+CHRISTMAS_PREFIX = "christmas_2023_"
+
+PRESENTS_ID = f"{CHRISTMAS_PREFIX}presents"
+
 class FlavorStrings:
     """Holds various flavor strings"""
 
+    pokepass = FlavorString("Poképass")
     pokecoins = FlavorString("Pokécoins", "<:pokecoins:1185296751012356126>")
     event_pokemon = FlavorString("Event Pokémon")
     shards = FlavorString("Shards", "<:shards:1185296789918728263>")
@@ -85,12 +90,13 @@ class FlavorStrings:
     mythical = FlavorString("Mythical Pokémon", "<:present_red:1185312798343962794> ")
     ub = FlavorString("Ultra Beast", "<:present_yellow:1185312800596308048>")
     legendary = FlavorString("Legendary Pokémon", "<:present_purple:1185312796854980719>")
-    presents = FlavorString("Christmas Present", ":gift:")
+    present = FlavorString("Christmas Present", ":gift:")
     badge = FlavorString("Christmas 2023 Badge", "<:badge_christmas_2023:1185512567716708435>")
 
 
 # Command strings
 CMD_CHRISTMAS = "`{0} christmas`"
+CMD_OPEN = "`{0} christmas open <qty>`"
 
 
 class Christmas(commands.Cog):
@@ -246,7 +252,7 @@ class Christmas(commands.Cog):
 
         next_level = member[f"{CHRISTMAS_PREFIX}level"] + 1
         if next_level > len(PASS_REWARDS):
-            next_reward = f"{FlavorStrings.presents.emoji} 1 Present"
+            next_reward = f"{FlavorStrings.present.emoji} 1 Present"
         else:
             next_reward = await self.make_reward_text(reward=PASS_REWARDS[next_level])
 
@@ -293,6 +299,27 @@ class Christmas(commands.Cog):
         if type in ["lvl", "level"]:
             await self.bot.mongo.update_member(ctx.author, {"$set": {f"{CHRISTMAS_PREFIX}level": qty}})
             await ctx.send(f"Set {ctx.author.name}'s level to {qty}!")
+
+    @checks.has_started()
+    @christmas.command(aliases=("inv", "presents", "present"))
+    async def inventory(self, ctx: PoketwoContext):
+        embed = self.bot.Embed(title=f"Christmas 2023 Presents Inventory")
+        embed.set_author(name=str(ctx.author), icon_url=ctx.author.display_avatar.url)
+
+        member = await self.bot.mongo.fetch_member_info(ctx.author)
+
+        prefix = ctx.clean_prefix.strip()
+        embed.add_field(
+            name=f"{FlavorStrings.present:s} — {member[PRESENTS_ID]:,}",
+            value=(
+                f"> {CMD_OPEN.format(prefix)}\n"
+                f"You will earn a present for every level you complete after completing the {FlavorStrings.pokepass}!"
+                f" These presents hold the various rewards that were available in the main levels of the {FlavorStrings.pokepass}."
+            ),
+            inline=False,
+        )
+
+        await ctx.send(embed=embed)
 
 
 async def setup(bot: commands.Bot):
