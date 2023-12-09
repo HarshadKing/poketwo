@@ -187,23 +187,22 @@ class Christmas(commands.Cog):
         await ctx.send(embed=embed)
 
     async def make_reward_text(self, reward, number=None):
-        iv_text = ""
         level_text = ""
-        reward_text = ""
-        reward_type = "reward"
 
         if reward["reward"] == "iv_pokemon":
-            iv_text = "+ IV"
+            iv = reward["amount"]
+            flavor = FlavorStrings.iv_pokemon
+            reward_text = f"{flavor.emoji} {iv}+ {flavor:!e}"
 
-        if reward["reward"] == "rarity_pokemon":
-            reward_type = "rarity"
+        elif reward["reward"] == "rarity_pokemon":
+            reward_text = getattr(FlavorStrings, reward["rarity"])
 
-        if reward["reward"] == "event_pokemon":
-            reward_text = str(self.bot.data.species_by_number(reward["id"]))
-            if "badge" in reward:
-                reward_text += " & Christmas 2023 badge"
+        elif reward["reward"] == "event_pokemon":
+            species = self.bot.data.species_by_number(reward["id"])
+            reward_text = f"{self.bot.sprites.get(species.dex_number)} {species}"
         else:
-            reward_text = reward["amount"]
+            flavor = getattr(FlavorStrings, reward["reward"])
+            reward_text = f"{flavor.emoji} {reward['amount']} {flavor:!e}"
 
         if number != None:
             if number < 10:
@@ -211,7 +210,7 @@ class Christmas(commands.Cog):
             else:
                 level_text = f"`{number}:`"
 
-        return f"{level_text}　{getattr(FlavorStrings, reward[reward_type])}　•　{reward_text}{iv_text}"
+        return f"{level_text}　{reward_text}"
 
     @checks.has_started()
     @commands.group(aliases=("event", "ev"), invoke_without_command=True, case_insensitive=True)
