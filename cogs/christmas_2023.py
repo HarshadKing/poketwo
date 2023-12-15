@@ -152,7 +152,9 @@ WEEKLY_QUESTS = {
     make_quest("market_buy", range(15, 26)): 10,  # Market Purchase quest
     make_quest("market_sell", range(15, 26)): 5,  # Market Sale quest
     make_quest("open_box", range(4, 7)): 15,  # Voting box quest
-    make_quest("battle_start", range(10, 16), type=lambda: random.choice(TYPES)): 10,  # Battling with certain types quest
+    make_quest(
+        "battle_start", range(10, 16), type=lambda: random.choice(TYPES)
+    ): 10,  # Battling with certain types quest
 }
 
 
@@ -190,10 +192,7 @@ class Christmas(commands.Cog):
     async def christmas(self, ctx: PoketwoContext):
         """View christmas event main menu."""
 
-        embed = self.bot.Embed(
-            title=f"Christmas 2023 - The Poké Express",
-            description="<INSERT TEXT>"
-        )
+        embed = self.bot.Embed(title=f"Christmas 2023 - The Poké Express", description="<INSERT TEXT>")
 
         await ctx.send(embed=embed)
 
