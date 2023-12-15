@@ -430,7 +430,7 @@ class Christmas(commands.Cog):
                         case "event":
                             population = self.pools["event"]
                             weights = EVENT_CHANCES
-                            shiny_boost = 20
+                            shiny_boost = 5
                         case "rare":
                             pool = [x for x in self.pools["rare"] if x.catchable]
                             population = pool
