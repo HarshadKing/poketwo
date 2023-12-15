@@ -32,6 +32,7 @@ XP_REQUIREMENT = 1000
 class FlavorStrings:
     """Holds various flavor strings"""
 
+    pokepass = FlavorString("Poképass")
     pokecoins = FlavorString("Pokécoins")
 
 
@@ -95,20 +96,26 @@ def get_quest_description(quest: dict):
             description = f"Open {count} Voting box{'' if count == 1 else 'es'}"
 
         case "market_buy":
-            action = condition["action"]
-            if action == "buy":
-                description = f"Purchase {count} pokémon from the market"
-            elif action == "sell":
-                description = f"Sell {count} pokémon on the market"
+            description = f"Purchase {count} pokémon from the market"
+
+        case "market_sell":
+            description = f"Sell {count} pokémon on the market"
 
         case "trade":
             description = f"Trade {count} times"
 
-        case "battle_win":
-            description = f"Win {count} battles"
+        case "battle_start":
+            if condition:
+                if type := condition.get("type"):
+                    description = f"Battle {count} times with {type}-type pokémon"
+            else:
+                description = f"Battle {count} times"
 
         case "release":
             description = f"Release {count} pokémon"
+
+        case _:
+            description = f"{event} {count}"
 
     return description
 
@@ -117,37 +124,35 @@ def make_quest(event: str, count_range: range, **condition):
     return lambda: {
         "event": event,
         "count": random.choice(count_range),
-        "condition": condition,
+        "condition": {k: v() if callable(v) else v for k, v in condition.items()},
     }
 
 
 DAILY_QUESTS = [
     make_quest("catch", range(20, 31)),  # Any catch quest
-    *[make_quest("catch", range(10, 21), type=type) for type in TYPES],  # Type pokemon quests
-    *[make_quest("catch", range(10, 21), region=region) for region in REGIONS],  # Region pokemon quests
+    make_quest("catch", range(10, 21), type=lambda: random.choice(TYPES)),  # Type pokemon quests
+    make_quest("catch", range(10, 21), region=lambda: random.choice(REGIONS)),  # Region pokemon quests
     make_quest("catch", range(5, 11), rarity="event"),  # Event pokemon quests
     make_quest("catch", range(10, 21), rarity="paradox"),  # Paradox pokemon quests
-    *[
-        make_quest("market_buy", range(5, 11), action=action) for action in ("buy", "sell")
-    ],  # Market Purchase/Sale quests
+    make_quest("market_buy", range(5, 11)),  # Market Purchase quest
+    make_quest("market_sell", range(5, 11)),  # Market Sale quest
     make_quest("open_box", range(1, 2)),  # Voting box quest
     make_quest("trade", range(3, 6)),  # Trading quest
-    make_quest("battle_win", range(3, 6)),  # Winning battles quest
+    make_quest("battle_start", range(3, 6), type=lambda: random.choice(TYPES)),  # Battling with certain types quest
     make_quest("release", range(5, 11)),  # Releasing quest
 ]
 
 WEEKLY_QUESTS = [
     make_quest("catch", range(60, 71)),  # Any catch quest
-    *[make_quest("catch", range(40, 61), type=type) for type in TYPES],  # Type pokemon quests
-    *[make_quest("catch", range(40, 51), region=region) for region in REGIONS],  # Region pokemon quests
-    *[make_quest("catch", range(1, 4), rarity=rarity) for rarity in RARITIES],  # Rare pokemon quests
-    *[make_quest("catch", range(1, 4), form=form) for form in FORMS],  # Regional form pokemon quests
+    make_quest("catch", range(40, 61), type=lambda: random.choice(TYPES)),  # Type pokemon quests
+    make_quest("catch", range(40, 51), region=lambda: random.choice(REGIONS)),  # Region pokemon quests
+    make_quest("catch", range(1, 4), rarity=lambda: random.choice(RARITIES)),  # Rare pokemon quests
+    make_quest("catch", range(1, 4), form=lambda: random.choice(FORMS)),  # Regional form pokemon quests
     make_quest("catch", range(15, 26), rarity="event"),  # Event pokemon quests
+    make_quest("market_buy", range(15, 26)),  # Market Purchase quest
+    make_quest("market_sell", range(15, 26)),  # Market Sale quest
     make_quest("open_box", range(4, 7)),  # Voting box quest
-    *[
-        make_quest("market_buy", range(15, 21), action=action) for action in ("buy", "sell")
-    ],  # Market Purchase/Sale quests
-    make_quest("battle_win", range(10, 14)),  # Winning battles quest
+    make_quest("battle_start", range(10, 16), type=lambda: random.choice(TYPES)),  # Battling with certain types quest
 ]
 
 
@@ -191,6 +196,187 @@ class Christmas(commands.Cog):
         )
 
         await ctx.send(embed=embed)
+
+    async def fetch_quests(self, member: Union[discord.User, discord.Member]) -> List[Dict[str, Any]]:
+        member_info = await self.bot.mongo.fetch_member_info(member)
+
+        quests = [q for q in member_info[QUESTS_ID] if discord.utils.utcnow() < q["expires"]]
+
+        daily_quests = [q for q in quests if q["type"] == "daily"]
+        weekly_quests = [q for q in quests if q["type"] == "weekly"]
+
+        if not daily_quests:
+            quests.extend(
+                [
+                    {
+                        **q(),
+                        "_id": str(uuid.uuid4()),
+                        "progress": 0,
+                        "type": "daily",
+                        "expires": discord.utils.utcnow() + timedelta(days=1),
+                    }
+                    for q in random.choices(DAILY_QUESTS, k=5)
+                ]
+            )
+
+        if not weekly_quests:
+            quests.extend(
+                [
+                    {
+                        **q(),
+                        "_id": str(uuid.uuid4()),
+                        "progress": 0,
+                        "type": "weekly",
+                        "expires": discord.utils.utcnow() + timedelta(days=7),
+                    }
+                    for q in random.choices(WEEKLY_QUESTS, k=5)
+                ]
+            )
+
+        if not daily_quests or not weekly_quests:
+            await self.bot.mongo.update_member(member, {"$set": {QUESTS_ID: quests}})
+
+        return quests
+
+    @checks.has_started()
+    @christmas.command(aliases=["q"])
+    async def quests(self, ctx: commands.Context):
+        """View Poképass quests."""
+
+        embed = self.bot.Embed(
+            title=f"{FlavorStrings.pokepass} Quests",
+            description=f"Complete these quests to earn {FlavorStrings.pokepass} XP!",
+        )
+
+        all_quests = await self.fetch_quests(ctx.author)
+
+        key = lambda q: q["type"]
+        groups = itertools.groupby(sorted(all_quests, key=key), key)  # Group by daily/weekly
+
+        for group, quests in groups:
+            expires = None
+            value = []
+            for q in quests:
+                description = get_quest_description(q)
+
+                # TODO: Experimental
+                # Underline the description to represent a progress bar
+                dl = list(f"\u200b{description}")
+                dl.insert(0, "__")
+                dl.insert(max(round(q["progress"] / q["count"] * len(dl)), 2), "__")
+
+                value.append(f"{'`☑`' if q.get('completed') else '`☐`'} {''.join(dl)} `{q['progress']}/{q['count']}`")
+                expires = q["expires"]
+
+            ts = f"<t:{int(expires.timestamp())}:{{0}}>"
+            embed.add_field(
+                name=q["type"].capitalize(),
+                value="\n".join([f"Resets {ts.format('R')}"] + value),
+                inline=False,
+            )
+
+        await ctx.send(embed=embed)
+
+    @commands.is_owner()
+    @christmas.command()
+    async def setprogress(self, ctx: PoketwoContext, index: int, progress: int):
+        quests = await self.fetch_quests(ctx.author)
+        if not quests:
+            return await ctx.send("No quests")
+
+        q = quests[index]
+        q["progress"] = progress
+        q["completed"] = progress >= q["count"]
+        await self.bot.mongo.db.member.update_one(
+            {"_id": ctx.author.id, f"{QUESTS_ID}._id": q["_id"]},
+            {"$set": {f"{QUESTS_ID}.$": q}},
+        )
+
+        await self.bot.redis.hdel("db:member", ctx.author.id)
+        await ctx.message.add_reaction("✅")
+
+    async def check_quests(self, user: Union[discord.User, discord.Member]):
+        quests = await self.fetch_quests(user)
+        if not quests:
+            return
+
+        for q in quests:
+            if q["progress"] >= q["count"] and not q.get("completed"):
+                await self.bot.mongo.db.member.update_one(
+                    {"_id": user.id, f"{QUESTS_ID}._id": q["_id"]},
+                    {"$set": {f"{QUESTS_ID}.$.completed": True}},
+                )
+                await self.bot.redis.hdel("db:member", user.id)
+
+                inc_xp = QUEST_REWARDS[q["type"]]
+                with contextlib.suppress(discord.HTTPException):
+                    # TODO: Decide user instead of ctx
+                    # await self.give_xp(user, inc_xp)
+                    await user.send(
+                        f"You completed the {FlavorStrings.pokepass} quest **{get_quest_description(q)}**! You received **{inc_xp}XP**!"
+                    )
+
+    def verify_condition(self, condition: dict, species: Species):
+        if condition is not None:
+            for k, v in condition.items():
+                if k == "type" and v not in species.types:
+                    return False
+                elif k == "region" and v != species.region:
+                    return False
+                elif k in ("rarity", "form") and species.id not in getattr(self.bot.data, f"list_{v}"):
+                    return False
+        return True
+
+    async def on_quest_event(self, user: Union[discord.User, discord.Member], event: str, to_verify: list, *, count=1):
+        quests = await self.fetch_quests(user)
+        if not quests:
+            return
+
+        for q in quests:
+            if q["event"] != event:
+                continue
+
+            if (
+                len(to_verify) == 0
+                or any(self.verify_condition(q.get("condition"), x) for x in to_verify)
+                and not q.get("completed")
+            ):
+                await self.bot.mongo.db.member.update_one(
+                    {"_id": user.id, f"{QUESTS_ID}._id": q["_id"]},
+                    {"$inc": {f"{QUESTS_ID}.$.progress": min(count, q["count"])}},
+                )
+
+        await self.bot.redis.hdel("db:member", user.id)
+        await self.check_quests(user)
+
+    @commands.Cog.listener()
+    async def on_catch(self, ctx, species, id):
+        await self.on_quest_event(ctx.author, "catch", [species])
+
+    @commands.Cog.listener()
+    async def on_market_buy(self, user, pokemon):
+        await self.on_quest_event(user, "market_buy", [])
+        await self.on_quest_event(discord.Object(pokemon["owner_id"]), "market_sell", [])
+
+    @commands.Cog.listener()
+    async def on_trade(self, trade):
+        a, b = trade["users"]
+        await self.on_quest_event(a, "trade", [])
+        await self.on_quest_event(b, "trade", [])
+
+    @commands.Cog.listener()
+    async def on_battle_start(self, ba):
+        self.ba = ba
+        await self.on_quest_event(ba.trainers[0].user, "battle_start", [x.species for x in ba.trainers[0].pokemon])
+        await self.on_quest_event(ba.trainers[1].user, "battle_start", [x.species for x in ba.trainers[1].pokemon])
+
+    @commands.Cog.listener()
+    async def on_release(self, user, count):
+        await self.on_quest_event(user, "release", [], count=count)
+
+    @commands.Cog.listener()
+    async def on_open_box(self, user, count):
+        await self.on_quest_event(user, "open_box", [], count=count)
 
 
 async def setup(bot: commands.Bot):

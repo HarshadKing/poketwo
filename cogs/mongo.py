@@ -357,6 +357,8 @@ class Member(Document):
     halloween_2023_milestone_contribution_helping_snaring = fields.FloatField(default=0.0)  # TODO: Finalize type
     halloween_2023_milestone_contribution_saving_golurk = fields.FloatField(default=0.0)  # TODO: Finalize type
 
+    christmas_2023_quests = fields.ListField(fields.DictField(), default=list)
+
     @property
     def selected_pokemon(self):
         try:
