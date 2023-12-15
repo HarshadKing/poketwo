@@ -2,6 +2,7 @@ from __future__ import annotations
 import contextlib
 
 from datetime import datetime, timedelta
+import itertools
 import random
 from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional, Union
 import uuid
@@ -38,10 +39,7 @@ class FlavorStrings:
 CMD_CHRISTMAS = "`{0} christmas`"
 
 
-QUEST_REWARDS = {
-    "daily": 1100,
-    "weekly": 2800
-}
+QUEST_REWARDS = {"daily": 1100, "weekly": 2800}
 
 
 TYPES = [
@@ -67,114 +65,89 @@ TYPES = [
 
 REGIONS = ("kanto", "johto", "hoenn", "sinnoh", "unova", "kalos", "alola", "galar")
 
-RARITIES = ("mythical", "legendary", "ub", "event", "paradox")
+RARITIES = ("mythical", "legendary", "ub")
 
 FORMS = ("alolan", "galarian", "hisuian")
 
-def make_catch_quest(
-    count_range: range,
-    *,
-    type: Optional[TYPES] = None,
-    region: Optional[REGIONS] = None,
-    rarity: Optional[RARITIES] = None,
-    form: Optional[FORMS] = None,
-):
-    if type:
-        condition = {"type": type}
-        description = f"Catch {{count}} {type}-type pokémon"
-    elif region:
-        condition = {"region": region}
-        description = f"Catch {{count}} pokémon from the {region.title()} region"
-    elif rarity:
-        condition = {"rarity": rarity}
 
-        title = rarity.replace("_", " ").title()
-        description = f"Catch {{count}} {title} pokémon"
-    elif form:
-        condition = {"form": form}
+def get_quest_description(quest: dict):
+    count = quest["count"]
+    event = quest["event"]
+    condition = quest.get("condition")
 
-        title = "Ultra Beast" if rarity == "ub" else rarity.title()
-        description = f"Catch {{count}} {title} pokémon"
-    else:
-        condition = {}
-        description = f"Catch {{count}} pokémon"
+    match event:
+        case "catch":
+            if condition:
+                if type := condition.get("type"):
+                    description = f"Catch {count} {type}-type pokémon"
+                elif region := condition.get("region"):
+                    description = f"Catch {count} pokémon from the {region.title()} region"
+                elif rarity := condition.get("rarity"):
+                    title = "Ultra Beast" if rarity == "ub" else rarity.title()
+                    description = f"Catch {count} {title} pokémon"
+                elif form := condition.get("form"):
+                    title = form.title()
+                    description = f"Catch {count} {title} pokémon"
+            else:
+                description = f"Catch {count} pokémon"
 
-    def quest():
-        return {
-            "event": "catch",
-            "count": (count := random.choice(count_range)),
-            "condition": condition,
-            "description": description.format(count=count),
-        }
-    return quest
+        case "open_box":
+            description = f"Open {count} Voting box{'' if count == 1 else 'es'}"
 
-def make_voting_box_quest(count_range: range):
+        case "market_buy":
+            action = condition["action"]
+            if action == "buy":
+                description = f"Purchase {count} pokémon from the market"
+            elif action == "sell":
+                description = f"Sell {count} pokémon on the market"
+
+        case "trade":
+            description = f"Trade {count} times"
+
+        case "battle_win":
+            description = f"Win {count} battles"
+
+        case "release":
+            description = f"Release {count} pokémon"
+
+    return description
+
+
+def make_quest(event: str, count_range: range, **condition):
     return lambda: {
-        "event": "open_box",
-        "count": (count := random.choice(count_range)),
-        "description": f"Open {count} voting box",
-    }
-
-def make_market_quest(count_range: range, action: Literal["buy", "sell"]):
-    if action == "buy":
-        description = "Purchase {count} pokémon from the market"
-    elif action == "sell":
-        description = "Sell {count} pokémon on the market"
-
-    return lambda: {
-        "event": f"market_buy",
-        "count": (count := random.choice(count_range)),
-        "condition": {"action": action},
-        "description": description.format(count=count),
-    }
-
-def make_trading_quest(count_range: range):
-    return {
-        "event": "trade",
-        "count": (count := random.choice(count_range)),
-        "description": f"Trade {count} times",
-    }
-
-def make_battling_quest(count_range: range):
-    return {
-        "event": "battle_win",
-        "count": (count := random.choice(count_range)),
-        "description": f"Win {count} battles",
-    }
-
-def make_release_quest(count_range: range):
-    return {
-        "event": "release",
-        "count": (count := random.choice(count_range)),
-        "description": f"Release {count} pokémon",
+        "event": event,
+        "count": random.choice(count_range),
+        "condition": condition,
     }
 
 
 DAILY_QUESTS = [
-    make_catch_quest(range(20, 31)),  # Any catch quest
-    *[make_catch_quest(range(10, 21), type=type) for type in TYPES],  # Type pokemon quests
-    *[make_catch_quest(range(10, 21), region=region) for region in REGIONS],  # Region pokemon quests
-    make_catch_quest(range(5, 11), rarity="event"),  # Event pokemon quests
-    make_catch_quest(range(10, 21), rarity="paradox"),  # Paradox pokemon quests
-
-    *[make_market_quest(action, range(5, 11)) for action in ("buy", "sell")],  # Market Purchase/Sale quests
-
-    make_voting_box_quest(range(1, 2)),  # Voting box quest
-    make_trading_quest(range(3, 6)),  # Trading quest
-    make_battling_quest(range(3, 6)),  # Winning battles quest
-    make_release_quest(range(5, 11)),  # Releasing quest
+    make_quest("catch", range(20, 31)),  # Any catch quest
+    *[make_quest("catch", range(10, 21), type=type) for type in TYPES],  # Type pokemon quests
+    *[make_quest("catch", range(10, 21), region=region) for region in REGIONS],  # Region pokemon quests
+    make_quest("catch", range(5, 11), rarity="event"),  # Event pokemon quests
+    make_quest("catch", range(10, 21), rarity="paradox"),  # Paradox pokemon quests
+    *[
+        make_quest("market_buy", range(5, 11), action=action) for action in ("buy", "sell")
+    ],  # Market Purchase/Sale quests
+    make_quest("open_box", range(1, 2)),  # Voting box quest
+    make_quest("trade", range(3, 6)),  # Trading quest
+    make_quest("battle_win", range(3, 6)),  # Winning battles quest
+    make_quest("release", range(5, 11)),  # Releasing quest
 ]
 
 WEEKLY_QUESTS = [
-    make_catch_quest(range(60, 71)),  # Any catch quest
-    *[make_catch_quest(range(50, 71), type=type) for type in TYPES],  # Type pokemon quests
-    *[make_catch_quest(range(50, 71), region=region) for region in REGIONS],  # Region pokemon quests
-    *[make_catch_quest(range(1, 4), rarity=rarity) for rarity in RARITIES],  # Rare pokemon quests
-    *[make_catch_quest(range(1, 4), form=form) for form in FORMS],  # Regional form pokemon quests
-
-    make_voting_box_quest(range(4, 7))  # Voting box quest
-    *[make_market_quest(range(15, 21), action=action) for action in ("buy", "sell")],  # Market Purchase/Sale quests
-    make_battling_quest(range(10, 14)),  # Winning battles quest
+    make_quest("catch", range(60, 71)),  # Any catch quest
+    *[make_quest("catch", range(40, 61), type=type) for type in TYPES],  # Type pokemon quests
+    *[make_quest("catch", range(40, 51), region=region) for region in REGIONS],  # Region pokemon quests
+    *[make_quest("catch", range(1, 4), rarity=rarity) for rarity in RARITIES],  # Rare pokemon quests
+    *[make_quest("catch", range(1, 4), form=form) for form in FORMS],  # Regional form pokemon quests
+    make_quest("catch", range(15, 26), rarity="event"),  # Event pokemon quests
+    make_quest("open_box", range(4, 7)),  # Voting box quest
+    *[
+        make_quest("market_buy", range(15, 21), action=action) for action in ("buy", "sell")
+    ],  # Market Purchase/Sale quests
+    make_quest("battle_win", range(10, 14)),  # Winning battles quest
 ]
 
 
