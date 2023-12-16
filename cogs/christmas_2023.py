@@ -83,7 +83,14 @@ BADGE_NAME = "christmas_2023"
 
 # TODO: FINALIZE CHANCES
 PRESENTS_ID = f"{CHRISTMAS_PREFIX}presents"
-PRESENT_CHANCES = {"pokecoins": 0.25, "shards": 0.05, "redeems": 0.05, "event_pokemon": 0.48, "rarity_pokemon": 0.12, "iv_pokemon": 0.05}
+PRESENT_CHANCES = {
+    "pokecoins": 0.25,
+    "shards": 0.05,
+    "redeems": 0.05,
+    "event_pokemon": 0.48,
+    "rarity_pokemon": 0.12,
+    "iv_pokemon": 0.05,
+}
 PRESENT_REWARD_AMOUNTS = {
     "pokecoins": range(2000, 4000),
     "shards": range(10, 40),
@@ -354,14 +361,19 @@ class Christmas(commands.Cog):
             case "event_pokemon" | "rarity_pokemon" | "iv_pokemon":
                 text = [await self.make_reward_text(reward)]
                 if reward.get("id"):
-                    pokemon = await self.make_pokemon(user, member, species=self.bot.data.species_by_number(reward["id"]))
+                    pokemon = await self.make_pokemon(
+                        user, member, species=self.bot.data.species_by_number(reward["id"])
+                    )
                     await self.bot.mongo.db.pokemon.insert_one(pokemon)
                     pokemon_obj = self.bot.mongo.Pokemon.build_from_mongo(pokemon)
                     text.append(f"- {pokemon_obj:liP}")
                 else:
                     count = reward.get("amount", 1)
                     # Pass in the rarity if the reward is a rare pokemon, otherwise just the reward
-                    inserts = [await self.make_reward_pokemon(reward.get("rarity", reward["reward"]), user, member) for i in range(count)]
+                    inserts = [
+                        await self.make_reward_pokemon(reward.get("rarity", reward["reward"]), user, member)
+                        for i in range(count)
+                    ]
 
                     await self.bot.mongo.db.pokemon.insert_many(inserts)
                     for pokemon in inserts:
@@ -738,8 +750,7 @@ class Christmas(commands.Cog):
                 continue
 
             if (
-                len(to_verify) == 0
-                or any(self.verify_condition(q.get("condition"), x) for x in to_verify)
+                len(to_verify) == 0 or any(self.verify_condition(q.get("condition"), x) for x in to_verify)
             ) and not q.get("completed"):
                 await self.bot.mongo.db.member.update_one(
                     {"_id": user.id, f"{QUESTS_ID}._id": q["_id"]},
@@ -756,7 +767,9 @@ class Christmas(commands.Cog):
     @commands.Cog.listener()
     async def on_market_buy(self, user, pokemon):
         await self.on_quest_event(user, "market_buy", [], count=pokemon["market_data"]["price"])
-        await self.on_quest_event(await self.bot.fetch_user(pokemon["owner_id"]), "market_sell", [], count=pokemon["market_data"]["price"])
+        await self.on_quest_event(
+            await self.bot.fetch_user(pokemon["owner_id"]), "market_sell", [], count=pokemon["market_data"]["price"]
+        )
 
     @commands.Cog.listener()
     async def on_trade(self, trade):
