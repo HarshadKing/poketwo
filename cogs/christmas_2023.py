@@ -96,10 +96,10 @@ def get_quest_description(quest: dict):
             description = f"Open {count} Voting box{'' if count == 1 else 'es'}"
 
         case "market_buy":
-            description = f"Purchase {count} pokémon from the market"
+            description = f"Spend {count} {FlavorStrings.pokecoins} on the market"
 
         case "market_sell":
-            description = f"Sell {count} pokémon on the market"
+            description = f"Earn {count} {FlavorStrings.pokecoins} from the market"
 
         case "trade":
             description = f"Trade {count} times"
@@ -133,9 +133,9 @@ DAILY_QUESTS = {
     make_quest("catch", range(10, 21), type=lambda: random.choice(TYPES)): 15,  # Type pokemon quests
     make_quest("catch", range(10, 21), region=lambda: random.choice(REGIONS)): 10,  # Region pokemon quests
     make_quest("catch", range(5, 11), rarity="event"): 10,  # Event pokemon quests
-    make_quest("catch", range(10, 21), rarity="paradox"): 10,  # Paradox pokemon quests
-    make_quest("market_buy", range(5, 11)): 5,  # Market Purchase quest
-    make_quest("market_sell", range(5, 11)): 5,  # Market Sale quest
+    make_quest("catch", range(10, 21), rarity="paradox"): 5,  # Paradox pokemon quests
+    make_quest("market_buy", [500, 1000]): 5,  # Market Purchase quest
+    make_quest("market_sell", [500, 1000]): 10,  # Market Sale quest
     make_quest("open_box", range(1, 2)): 10,  # Voting box quest
     make_quest("trade", range(3, 6)): 5,  # Trading quest
     make_quest("battle_start", range(3, 6), type=lambda: random.choice(TYPES)): 10,  # Battling with certain types quest
@@ -149,8 +149,8 @@ WEEKLY_QUESTS = {
     make_quest("catch", range(1, 4), rarity=lambda: random.choice(RARITIES)): 15,  # Rare pokemon quests
     make_quest("catch", range(1, 4), form=lambda: random.choice(FORMS)): 10,  # Regional form pokemon quests
     make_quest("catch", range(15, 26), rarity="event"): 5,  # Event pokemon quests
-    make_quest("market_buy", range(15, 26)): 10,  # Market Purchase quest
-    make_quest("market_sell", range(15, 26)): 5,  # Market Sale quest
+    make_quest("market_buy", [4000, 5000, 5500]): 10,  # Market Purchase quest
+    make_quest("market_sell", [4000, 5000, 5500]): 10,  # Market Sale quest
     make_quest("open_box", range(4, 7)): 15,  # Voting box quest
     make_quest(
         "battle_start", range(10, 16), type=lambda: random.choice(TYPES)
@@ -354,8 +354,8 @@ class Christmas(commands.Cog):
 
     @commands.Cog.listener()
     async def on_market_buy(self, user, pokemon):
-        await self.on_quest_event(user, "market_buy", [])
-        await self.on_quest_event(discord.Object(pokemon["owner_id"]), "market_sell", [])
+        await self.on_quest_event(user, "market_buy", [], count=pokemon["market_data"]["price"])
+        await self.on_quest_event(await self.bot.fetch_user(pokemon["owner_id"]), "market_sell", [], count=pokemon["market_data"]["price"])
 
     @commands.Cog.listener()
     async def on_trade(self, trade):
