@@ -563,10 +563,12 @@ class Christmas(commands.Cog):
         new_level = member_level
 
         requirement = self.get_xp_requirement(new_level)
-        while new_xp // requirement > 0:
+        while new_xp > requirement:
+            # While xp is larger than requirement, level up and lower xp
+            # and at the same time update the requirement in case it changes
+            # based on the new level.
             new_level += 1
             new_xp -= requirement
-            await self.reward_level_up(user, member, new_level)
             requirement = self.get_xp_requirement(new_level)
 
         update = {"$inc": {XP_ID: new_xp - member_xp}}
@@ -574,6 +576,11 @@ class Christmas(commands.Cog):
             update["$inc"][LEVEL_ID] = new_level - member_level
 
         await self.bot.mongo.update_member(user, update)
+
+        # Send the DMs after updating
+        if new_level > member_level:
+            for l in range(member_level + 1, new_level + 1):
+                await self.reward_level_up(user, member, l)
 
     ## Event handlers
 
