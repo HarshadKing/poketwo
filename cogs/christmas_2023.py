@@ -77,13 +77,24 @@ CMD_CHRISTMAS = "`{0} christmas`"
 CMD_OPEN = "`{0} christmas open [qty=1]`"
 
 
+## EVENT POKEMON IDS
+# TODO: Put actual IDs once available
+EVENT_SMOLLIV = 928
+EVENT_VAROOM = 965
+EVENT_DRAGONITE = 149
+EVENT_DOLLIV = 929
+EVENT_PLUSLE_MINUN = 311
+EVENT_ARBOLIVA = 930
+EVENT_COSMOG = 789
+
+
 # POKEPASS
 
 XP_ID = f"{CHRISTMAS_PREFIX}xp"
 LEVEL_ID = f"{CHRISTMAS_PREFIX}level"
 
 PASS_REWARDS = {
-    1: {"reward": "event_pokemon", "id": 928},
+    1: {"reward": "event_pokemon", "id": EVENT_SMOLLIV},
     2: {"reward": "pokecoins", "amount": 2000},
     3: {"reward": "iv_pokemon"},
     4: {"reward": "pokecoins", "amount": 2000},
@@ -92,7 +103,7 @@ PASS_REWARDS = {
     7: {"reward": "pokecoins", "amount": 2000},
     8: {"reward": "rarity_pokemon", "rarity": "mythical", "amount": 5},
     9: {"reward": "pokecoins", "amount": 2000},
-    10: {"reward": "event_pokemon", "id": 965},
+    10: {"reward": "event_pokemon", "id": EVENT_VAROOM},
     11: {"reward": "pokecoins", "amount": 2500},
     12: {"reward": "pokecoins", "amount": 2500},
     13: {"reward": "iv_pokemon"},
@@ -102,7 +113,7 @@ PASS_REWARDS = {
     17: {"reward": "pokecoins", "amount": 2500},
     18: {"reward": "rarity_pokemon", "rarity": "mythical", "amount": 5},
     19: {"reward": "pokecoins", "amount": 2500},
-    20: {"reward": "event_pokemon", "id": 149},
+    20: {"reward": "event_pokemon", "id": EVENT_DRAGONITE},
     21: {"reward": "pokecoins", "amount": 3500},
     22: {"reward": "pokecoins", "amount": 3500},
     23: {"reward": "iv_pokemon"},
@@ -112,7 +123,7 @@ PASS_REWARDS = {
     27: {"reward": "pokecoins", "amount": 3500},
     28: {"reward": "rarity_pokemon", "rarity": "legendary", "amount": 3},
     29: {"reward": "pokecoins", "amount": 3500},
-    30: {"reward": "event_pokemon", "id": 929},
+    30: {"reward": "event_pokemon", "id": EVENT_DOLLIV},
     31: {"reward": "pokecoins", "amount": 4000},
     32: {"reward": "pokecoins", "amount": 4000},
     33: {"reward": "iv_pokemon"},
@@ -120,9 +131,9 @@ PASS_REWARDS = {
     35: {"reward": "shards", "amount": 125},
     36: {"reward": "pokecoins", "amount": 4000},
     37: {"reward": "pokecoins", "amount": 4000},
-    38: {"reward": "rarity_pokemon", "rarity": "ub", "amount": 1},
+    38: {"reward": "rarity_pokemon", "rarity": "ub", "amount": 5},
     39: {"reward": "pokecoins", "amount": 4000},
-    40: {"reward": "event_pokemon", "id": 311},
+    40: {"reward": "event_pokemon", "id": EVENT_PLUSLE_MINUN},
     41: {"reward": "pokecoins", "amount": 5000},
     42: {"reward": "pokecoins", "amount": 5000},
     43: {"reward": "iv_pokemon"},
@@ -132,7 +143,7 @@ PASS_REWARDS = {
     47: {"reward": "pokecoins", "amount": 5000},
     48: {"reward": "rarity_pokemon", "rarity": "legendary", "amount": 5},
     49: {"reward": "pokecoins", "amount": 5000},
-    50: {"reward": "event_pokemon", "id": 930, "badge": True},
+    50: {"reward": "event_pokemon", "id": EVENT_ARBOLIVA, "badge": True},
 }
 
 XP_REQUIREMENT = {"base": 1000, "extra": 500}
@@ -162,13 +173,13 @@ PRESENT_REWARD_AMOUNTS = {
 
 EVENT_CHANCES = {
     # These have been separated for ease of use
-    965: 0.11 / PRESENT_CHANCES["event_pokemon"],  # TODO: Train Varoom ID
-    928: 0.096 / PRESENT_CHANCES["event_pokemon"],  # TODO: Christmas Tree Smolliv ID
-    149: 0.096 / PRESENT_CHANCES["event_pokemon"],  # TODO: Conductor Dragonite ID
-    929: 0.072 / PRESENT_CHANCES["event_pokemon"],  # TODO: Christmas Tree Dolliv ID
-    311: 0.068 / PRESENT_CHANCES["event_pokemon"],  # TODO: Pyjama Plusle & Minun ID
-    930: 0.038 / PRESENT_CHANCES["event_pokemon"],  # TODO: Christmas Tree Arboliva ID
-    789: 0.01 / PRESENT_CHANCES["event_pokemon"],  # TODO: Fireworks Cosmog ID
+    EVENT_VAROOM: 0.11 / PRESENT_CHANCES["event_pokemon"],
+    EVENT_SMOLLIV: 0.096 / PRESENT_CHANCES["event_pokemon"],
+    EVENT_DRAGONITE: 0.096 / PRESENT_CHANCES["event_pokemon"],
+    EVENT_DOLLIV: 0.072 / PRESENT_CHANCES["event_pokemon"],
+    EVENT_PLUSLE_MINUN: 0.068 / PRESENT_CHANCES["event_pokemon"],
+    EVENT_ARBOLIVA: 0.038 / PRESENT_CHANCES["event_pokemon"],
+    EVENT_COSMOG: 0.01 / PRESENT_CHANCES["event_pokemon"],
 }
 EVENT_REWARDS = [*EVENT_CHANCES.keys()]
 EVENT_WEIGHTS = [*EVENT_CHANCES.values()]
@@ -373,7 +384,7 @@ class Christmas(commands.Cog):
     async def christmas(self, ctx: PoketwoContext):
         """Christmas event main menu. Contains Poképass details and presents inventory."""
 
-        embed = self.bot.Embed(title=f"Christmas 2023 - The Poké Express", description="")
+        embed = self.bot.Embed(title=f"Christmas 2023 - The Poké Express", description="")  # TODO: Description
 
         ## POKÉPASS VALUES
         member = await self.bot.mongo.fetch_member_info(ctx.author)
