@@ -128,7 +128,7 @@ class Christmas(commands.Cog):
         await self.bot.mongo.update_member(member, {"$set": {f"badges.{BADGE_NAME}": True}})
 
     async def give_reward(self, user: discord.User | discord.Member, member: Member, level):
-        reward = PASS_REWARDS[level + 1] if level <= len(PASS_REWARDS) else {"reward": "presents", "amount": 1}
+        reward = PASS_REWARDS[level + 1] if level < len(PASS_REWARDS) else {"reward": "presents", "amount": 1}
         match reward["reward"]:
             case "pokecoins":
                 await self.bot.mongo.update_member(member, {"$inc": {"balance": reward["amount"]}})
