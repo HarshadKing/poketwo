@@ -69,7 +69,7 @@ class ClusterBot(commands.AutoShardedBot):
 
     class Embed(discord.Embed):
         def __init__(self, **kwargs):
-            color = kwargs.pop("color", helpers.constants.PINK)
+            color = kwargs.pop("color", helpers.constants.BLUE)
             super().__init__(**kwargs, color=color)
 
     def __init__(self, **kwargs):
