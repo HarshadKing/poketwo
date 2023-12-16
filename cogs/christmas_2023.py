@@ -369,6 +369,9 @@ class Christmas(commands.Cog):
     async def rewards(self, ctx: PoketwoContext):
         """View all the rewards from the pass menu."""
 
+        member = await self.bot.mongo.fetch_member_info(ctx.author)
+        level = member[f"{CHRISTMAS_PREFIX}level"]
+
         async def get_page(source, menu, pidx):
             pgstart = pidx * 10
             pgend = min(pgstart + 10, len(PASS_REWARDS))
@@ -376,7 +379,8 @@ class Christmas(commands.Cog):
             # Send embed
             description = ""
             for reward in list(PASS_REWARDS.items())[pgstart:pgend]:
-                description += await self.make_reward_text(reward=reward[1], number=reward[0]) + "\n"
+                text = await self.make_reward_text(reward=reward[1], number=reward[0])
+                description += (text if reward[0] <= level else f"**{text}**") + "\n"
 
             embed = self.bot.Embed(title=f"Poképass Rewards", description=description)
             embed.set_footer(text=f"Showing {pgstart + 1}–{pgend} out of {len(PASS_REWARDS)}.")
