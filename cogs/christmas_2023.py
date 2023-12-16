@@ -165,7 +165,9 @@ class Christmas(commands.Cog):
         member = await self.bot.mongo.fetch_member_info(user)
 
         requirement = (
-            XP_REQUIREMENT["base"] if member[f"{CHRISTMAS_PREFIX}level"] < len(PASS_REWARDS) else XP_REQUIREMENT["extra"]
+            XP_REQUIREMENT["base"]
+            if member[f"{CHRISTMAS_PREFIX}level"] < len(PASS_REWARDS)
+            else XP_REQUIREMENT["extra"]
         )
         # Handling level up
         if member[f"{CHRISTMAS_PREFIX}xp"] >= requirement:
@@ -185,7 +187,9 @@ class Christmas(commands.Cog):
             description=f"",
         )
 
-        embed.add_field(name="Your rewards:", value=await self.give_reward(user, member, member[f"{CHRISTMAS_PREFIX}level"]))
+        embed.add_field(
+            name="Your rewards:", value=await self.give_reward(user, member, member[f"{CHRISTMAS_PREFIX}level"])
+        )
 
         # await ctx.send(embed=embed)
 
