@@ -332,12 +332,12 @@ class Christmas(commands.Cog):
             else XP_REQUIREMENT["extra"]
         )
 
-        embed.add_field(name="Your Level:", value=f"{member[f'{CHRISTMAS_PREFIX}level']}")
-        embed.add_field(name="Your Xp:", value=f"{member[f'{CHRISTMAS_PREFIX}xp']} / {requirement} ")
+        embed.add_field(name="Your Level:", value=f"{member[f'{CHRISTMAS_PREFIX}level']}", inline=False)
+        embed.add_field(name="Your XP:", value=f"{member[f'{CHRISTMAS_PREFIX}xp']} / {requirement}", inline=False)
 
         next_level = member[f"{CHRISTMAS_PREFIX}level"] + 1
         if next_level > len(PASS_REWARDS):
-            next_reward = f"{FlavorStrings.present.emoji} 1 Present"
+            next_reward = f"{FlavorStrings.present.emoji} 1 {FlavorStrings.present:!e}"
         else:
             next_reward = await self.make_reward_text(reward=PASS_REWARDS[next_level])
 
@@ -346,6 +346,18 @@ class Christmas(commands.Cog):
             value=f"{next_reward}",
             inline=False,
         )
+
+        prefix = ctx.clean_prefix.strip()
+        embed.add_field(
+            name=f"{FlavorStrings.present:s} — {member[PRESENTS_ID]:,}",
+            value=(
+                f"> {CMD_OPEN.format(prefix)}\n"
+                f"You will earn a present for every {FlavorStrings.pokepass} level you complete after completing the {FlavorStrings.pokepass}!"
+                f" These presents hold the various rewards that were available in the main levels of the {FlavorStrings.pokepass}."
+            ),
+            inline=False,
+        )
+
         await ctx.send(embed=embed)
 
     @checks.has_started()
@@ -373,51 +385,6 @@ class Christmas(commands.Cog):
         pages = pagination.ContinuablePages(pagination.FunctionPageSource(5, get_page))
         self.bot.menus[ctx.author.id] = pages
         await pages.start(ctx)
-
-    # DEBUGGING COMMAND
-    @commands.is_owner()
-    @christmas.command(aliases=("debug", "d"), usage="<type> [qty=1]")
-    async def debugging(self, ctx: PoketwoContext, type, qty: int):
-        if type == "xp":
-            await self.give_xp(ctx.author, amount=qty)
-            await ctx.send(f"Gave {ctx.author.name} {qty} XP!")
-        if type in ["lvl", "level"]:
-            await self.bot.mongo.update_member(ctx.author, {"$set": {f"{CHRISTMAS_PREFIX}level": qty}})
-            await ctx.send(f"Set {ctx.author.name}'s level to {qty}!")
-
-    @checks.has_started()
-    @christmas.command(aliases=("inv", "presents", "present"))
-    async def inventory(self, ctx: PoketwoContext):
-        embed = self.bot.Embed(title=f"Christmas 2023 Presents Inventory")
-        embed.set_author(name=str(ctx.author), icon_url=ctx.author.display_avatar.url)
-
-        member = await self.bot.mongo.fetch_member_info(ctx.author)
-
-        prefix = ctx.clean_prefix.strip()
-        embed.add_field(
-            name=f"{FlavorStrings.present:s} — {member[PRESENTS_ID]:,}",
-            value=(
-                f"> {CMD_OPEN.format(prefix)}\n"
-                f"You will earn a present for every {FlavorStrings.pokepass} level you complete after completing the {FlavorStrings.pokepass}!"
-                f" These presents hold the various rewards that were available in the main levels of the {FlavorStrings.pokepass}."
-            ),
-            inline=False,
-        )
-
-        await ctx.send(embed=embed)
-
-    @commands.is_owner()
-    @christmas.command(aliases=("givepresent", "gp"))
-    async def addpresent(
-        self,
-        ctx: PoketwoContext,
-        user: FetchUserConverter,
-        qty: Optional[int] = 1,
-    ):
-        """Give presents to a user."""
-
-        await self.bot.mongo.update_member(user, {"$inc": {PRESENTS_ID: qty}})
-        await ctx.send(f"Gave **{user}** {qty}x {FlavorStrings.present:b}.")
 
     @checks.has_started()
     @christmas.command()
@@ -478,6 +445,30 @@ class Christmas(commands.Cog):
 
         embed.description = "\n".join(text)
         await ctx.reply(embed=embed, mention_author=False)
+
+    # DEBUGGING COMMAND
+    @commands.is_owner()
+    @christmas.command(aliases=("debug", "d"), usage="<type> [qty=1]")
+    async def debugging(self, ctx: PoketwoContext, type, qty: int):
+        if type == "xp":
+            await self.give_xp(ctx.author, amount=qty)
+            await ctx.send(f"Gave {ctx.author.name} {qty} XP!")
+        if type in ["lvl", "level"]:
+            await self.bot.mongo.update_member(ctx.author, {"$set": {f"{CHRISTMAS_PREFIX}level": qty}})
+            await ctx.send(f"Set {ctx.author.name}'s level to {qty}!")
+
+    @commands.is_owner()
+    @christmas.command(aliases=("givepresent", "gp"))
+    async def addpresent(
+        self,
+        ctx: PoketwoContext,
+        user: FetchUserConverter,
+        qty: Optional[int] = 1,
+    ):
+        """Give presents to a user."""
+
+        await self.bot.mongo.update_member(user, {"$inc": {PRESENTS_ID: qty}})
+        await ctx.send(f"Gave **{user}** {qty}x {FlavorStrings.present:b}.")
 
 
 async def setup(bot: commands.Bot):
