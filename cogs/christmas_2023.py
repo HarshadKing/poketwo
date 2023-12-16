@@ -242,7 +242,7 @@ class Christmas(commands.Cog):
 
         next_level = member[f"{CHRISTMAS_PREFIX}level"] + 1
         if next_level > len(PASS_REWARDS):
-            next_reward = ":gift: 1 Present"
+            next_reward = f"{FlavorStrings.presents.emoji} 1 Present"
         else:
             next_reward = await self.make_reward_text(reward=PASS_REWARDS[next_level])
 
