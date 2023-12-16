@@ -79,6 +79,9 @@ CMD_OPEN = "`{0} christmas open [qty=1]`"
 
 # POKEPASS
 
+XP_ID = f"{CHRISTMAS_PREFIX}xp"
+LEVEL_ID = f"{CHRISTMAS_PREFIX}level"
+
 PASS_REWARDS = {
     1: {"reward": "event_pokemon", "id": 928},
     2: {"reward": "pokecoins", "amount": 2000},
@@ -375,12 +378,12 @@ class Christmas(commands.Cog):
         ## POKÉPASS VALUES
         member = await self.bot.mongo.fetch_member_info(ctx.author)
 
-        requirement = self.get_xp_requirement(member[f"{CHRISTMAS_PREFIX}level"])
+        requirement = self.get_xp_requirement(member[LEVEL_ID])
 
-        embed.add_field(name="Your Level:", value=f"{member[f'{CHRISTMAS_PREFIX}level']}", inline=False)
-        embed.add_field(name="Your XP:", value=f"{member[f'{CHRISTMAS_PREFIX}xp']} / {requirement}", inline=False)
+        embed.add_field(name="Your Level:", value=f"{member[LEVEL_ID]}", inline=False)
+        embed.add_field(name="Your XP:", value=f"{member[XP_ID]} / {requirement}", inline=False)
 
-        next_level = member[f"{CHRISTMAS_PREFIX}level"] + 1
+        next_level = member[LEVEL_ID] + 1
         if next_level > len(PASS_REWARDS):
             next_reward = f"{FlavorStrings.present.emoji} 1 {FlavorStrings.present:!e}"
         else:
@@ -415,7 +418,7 @@ class Christmas(commands.Cog):
         """View all the rewards obtainable from the Poképass."""
 
         member = await self.bot.mongo.fetch_member_info(ctx.author)
-        level = member[f"{CHRISTMAS_PREFIX}level"]
+        level = member[LEVEL_ID]
 
         async def get_page(source, menu, pidx):
             pgstart = pidx * 10
@@ -444,7 +447,7 @@ class Christmas(commands.Cog):
             await self.give_xp(ctx.author, amount=qty)
             await ctx.send(f"Gave {ctx.author.name} {qty} XP!")
         if type in ["lvl", "level"]:
-            await self.bot.mongo.update_member(ctx.author, {"$set": {f"{CHRISTMAS_PREFIX}level": qty}})
+            await self.bot.mongo.update_member(ctx.author, {"$set": {LEVEL_ID: qty}})
             await ctx.send(f"Set {ctx.author.name}'s level to {qty}!")
 
     ## Utils
@@ -525,7 +528,7 @@ class Christmas(commands.Cog):
 
                 return "\n".join(text)
             case "present":
-                await self.bot.mongo.update_member(member, {"$inc": {f"{CHRISTMAS_PREFIX}presents": 1}})
+                await self.bot.mongo.update_member(member, {"$inc": {PRESENTS_ID: 1}})
                 return await self.make_reward_text(reward=reward)
 
     async def reward_level_up(self, user: discord.User | discord.Member, member: Member, level: int):
@@ -553,8 +556,8 @@ class Christmas(commands.Cog):
         """Function to give xp to a user and level up if requirements met."""
 
         member = await self.bot.mongo.fetch_member_info(user)
-        member_xp = member[f"{CHRISTMAS_PREFIX}xp"]
-        member_level = member[f"{CHRISTMAS_PREFIX}level"]
+        member_xp = member[XP_ID]
+        member_level = member[LEVEL_ID]
 
         new_xp = member_xp + amount
         new_level = member_level
@@ -566,9 +569,9 @@ class Christmas(commands.Cog):
             await self.reward_level_up(user, member, new_level)
             requirement = self.get_xp_requirement(new_level)
 
-        update = {"$inc": {f"{CHRISTMAS_PREFIX}xp": new_xp - member_xp}}
+        update = {"$inc": {XP_ID: new_xp - member_xp}}
         if new_level > member_level:
-            update["$inc"][f"{CHRISTMAS_PREFIX}level"] = new_level - member_level
+            update["$inc"][LEVEL_ID] = new_level - member_level
 
         await self.bot.mongo.update_member(user, update)
 
