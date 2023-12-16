@@ -71,21 +71,22 @@ PASS_REWARDS = {
     50: {"reward": "event_pokemon", "id": 930, "badge": True},
 }
 
-XP_REQUIREMENT = 1000
+XP_REQUIREMENT = {"base": 1000, "extra": 500}
 BADGE_NAME = "christmas_2023"
 
 
 class FlavorStrings:
     """Holds various flavor strings"""
 
-    pokecoins = FlavorString("Pokécoins", "⚾")
-    event_pokemon = FlavorString("Event Pokémon", "⚾")
-    shards = FlavorString("Shards", "⚾")
-    iv_pokemon = FlavorString("IV Pokémon", "⚾")
-    mythical = FlavorString("Mythical Pokémon", "⚾")
-    ub = FlavorString("Ultra Beast", "⚾")
-    legendary = FlavorString("Legendary Pokémon", "⚾")
-    presents = FlavorString("Christmas Present", "⚾")
+    pokecoins = FlavorString("Pokécoins", "<:pokecoins:1185296751012356126>")
+    event_pokemon = FlavorString("Event Pokémon")
+    shards = FlavorString("Shards", "<:shards:1185296789918728263>")
+    iv_pokemon = FlavorString("IV Pokémon", "<:present_green:1185312793948332062> ")
+    mythical = FlavorString("Mythical Pokémon", "<:present_red:1185312798343962794> ")
+    ub = FlavorString("Ultra Beast", "<:present_yellow:1185312800596308048>")
+    legendary = FlavorString("Legendary Pokémon", "<:present_purple:1185312796854980719>")
+    presents = FlavorString("Christmas Present", ":gift:")
+    badge = FlavorString("Christmas 2023 Badge", "<:badge_christmas_2023:1185512567716708435>")
 
 
 # Command strings
@@ -121,28 +122,23 @@ class Christmas(commands.Cog):
             "idx": await self.bot.mongo.fetch_next_idx(owner),
         }
 
-    async def give_badge(self, ctx: PoketwoContext):
-        user = ctx.author
-        member = await self.bot.mongo.fetch_member_info(user)
+    async def give_badge(self, member: discord.User):
         if member.badges.get(BADGE_NAME):
             return
-        await self.bot.mongo.update_member(user, {"$set": {f"badges.{BADGE_NAME}": True}})
+        await self.bot.mongo.update_member(member, {"$set": {f"badges.{BADGE_NAME}": True}})
 
-    async def give_reward(self, ctx: PoketwoContext, level):
-        member = await self.bot.mongo.fetch_member_info(ctx.author)
-        reward = PASS_REWARDS[level] if level <= len(PASS_REWARDS) else {"reward": "presents", "amount": 1}
+    async def give_reward(self, member: discord.User, level):
+        reward = PASS_REWARDS[level + 1] if level <= len(PASS_REWARDS) else {"reward": "presents", "amount": 1}
         match reward["reward"]:
             case "pokecoins":
-                await self.bot.mongo.update_member(ctx.author, {"$inc": {"balance": reward["amount"]}})
+                await self.bot.mongo.update_member(member, {"$inc": {"balance": reward["amount"]}})
                 return await self.make_reward_text(reward=reward)
             case "shards":
-                await self.bot.mongo.update_member(ctx.author, {"$inc": {"premium_balance": reward["amount"]}})
+                await self.bot.mongo.update_member(member, {"$inc": {"premium_balance": reward["amount"]}})
                 return await self.make_reward_text(reward=reward)
             case "event_pokemon":
                 text = ""
-                pokemon = await self.make_pokemon(
-                    ctx.author, member, species=self.bot.data.species_by_number(reward["id"])
-                )
+                pokemon = await self.make_pokemon(member, member, species=self.bot.data.species_by_number(reward["id"]))
 
                 await self.bot.mongo.db.pokemon.insert_many([pokemon])
                 pokemon_obj = self.bot.mongo.Pokemon.build_from_mongo(pokemon)
@@ -150,7 +146,7 @@ class Christmas(commands.Cog):
                 text += f"- {pokemon_obj:liP}"
 
                 if level == 50:
-                    await self.give_badge(ctx)
+                    await self.give_badge(member)
                     text += "\n- Christmas 2023 badge"
                 return text
 
@@ -161,30 +157,39 @@ class Christmas(commands.Cog):
                 # TODO: MAKE RARITY POKEMON FUNCITONALITIES
                 return
             case "presents":
-                await self.bot.mongo.update_member(ctx.author, {"$inc": {f"{CHRISTMAS_PREFIX}presents": 1}})
+                await self.bot.mongo.update_member(member, {"$inc": {f"{CHRISTMAS_PREFIX}presents": 1}})
                 return await self.make_reward_text(reward=reward)
 
-    async def give_xp(self, ctx: PoketwoContext, amount):
-        await self.bot.mongo.update_member(ctx.author, {"$inc": {f"{CHRISTMAS_PREFIX}xp": amount}})
-        member = await self.bot.mongo.fetch_member_info(ctx.author)
+    async def give_xp(self, member: discord.User, amount):
+        await self.bot.mongo.update_member(member, {"$inc": {f"{CHRISTMAS_PREFIX}xp": amount}})
+        user = await self.bot.mongo.fetch_member_info(member)
 
+        requirement = (
+            XP_REQUIREMENT["base"] if user[f"{CHRISTMAS_PREFIX}level"] < len(PASS_REWARDS) else XP_REQUIREMENT["extra"]
+        )
         # Handling level up
-        if member[f"{CHRISTMAS_PREFIX}xp"] >= XP_REQUIREMENT:
-            await self.level_up(ctx)
+        if user[f"{CHRISTMAS_PREFIX}xp"] >= requirement:
+            await self.level_up(user)
 
-    async def level_up(self, ctx: PoketwoContext):
-        await self.bot.mongo.update_member(ctx.author, {"$inc": {f"{CHRISTMAS_PREFIX}level": 1}})
-        await self.bot.mongo.update_member(ctx.author, {"$set": {f"{CHRISTMAS_PREFIX}xp": 0}})
-        member = await self.bot.mongo.fetch_member_info(ctx.author)
-        user_level = member[f"{CHRISTMAS_PREFIX}level"]
+            # If the user gets more than the required xp to level up, give the rest of the xp as awell
+            if amount > requirement:
+                await self.give_xp(member, amount=amount - requirement)
+
+    async def level_up(self, member: discord.User):
+        await self.bot.mongo.update_member(
+            member, {"$inc": {f"{CHRISTMAS_PREFIX}level": 1}, "$set": {f"{CHRISTMAS_PREFIX}xp": 0}}
+        )
+        user_level = member[f"{CHRISTMAS_PREFIX}level"] + 1
         embed = self.bot.Embed(
             title=f"Congratulations, You are now level {user_level}!",
             description=f"",
         )
 
-        embed.add_field(name="Your rewards:", value=await self.give_reward(ctx, member[f"{CHRISTMAS_PREFIX}level"]))
+        embed.add_field(name="Your rewards:", value=await self.give_reward(member, member[f"{CHRISTMAS_PREFIX}level"]))
 
-        await ctx.send(embed=embed)
+        # await ctx.send(embed=embed)
+
+        await self.bot.send_dm(member, embed=embed)
 
     async def make_reward_text(self, reward, number=None):
         level_text = ""
@@ -195,11 +200,15 @@ class Christmas(commands.Cog):
             reward_text = f"{flavor.emoji} {iv}+ {flavor:!e}"
 
         elif reward["reward"] == "rarity_pokemon":
-            reward_text = getattr(FlavorStrings, reward["rarity"])
+            amount = reward["amount"]
+            flavor = getattr(FlavorStrings, reward["rarity"])
+            reward_text = f"{flavor.emoji} {amount} {flavor:!e}"
 
         elif reward["reward"] == "event_pokemon":
             species = self.bot.data.species_by_number(reward["id"])
             reward_text = f"{self.bot.sprites.get(species.dex_number)} {species}"
+            if "badge" in reward:
+                reward_text += f" & {getattr(FlavorStrings, 'badge')}"
         else:
             flavor = getattr(FlavorStrings, reward["reward"])
             reward_text = f"{flavor.emoji} {reward['amount']} {flavor:!e}"
@@ -222,12 +231,18 @@ class Christmas(commands.Cog):
         ## POKÉPASS VALUES
         member = await self.bot.mongo.fetch_member_info(ctx.author)
 
+        requirement = (
+            XP_REQUIREMENT["base"]
+            if member[f"{CHRISTMAS_PREFIX}level"] < len(PASS_REWARDS)
+            else XP_REQUIREMENT["extra"]
+        )
+
         embed.add_field(name="Your Level:", value=f"{member[f'{CHRISTMAS_PREFIX}level']}")
-        embed.add_field(name="Your Xp:", value=f"{member[f'{CHRISTMAS_PREFIX}xp']} / {XP_REQUIREMENT}")
+        embed.add_field(name="Your Xp:", value=f"{member[f'{CHRISTMAS_PREFIX}xp']} / {requirement} ")
 
         next_level = member[f"{CHRISTMAS_PREFIX}level"] + 1
         if next_level > len(PASS_REWARDS):
-            next_reward = "Christmas Presents"
+            next_reward = ":gift: 1 Present"
         else:
             next_reward = await self.make_reward_text(reward=PASS_REWARDS[next_level])
 
@@ -269,7 +284,7 @@ class Christmas(commands.Cog):
     @christmas.command(aliases=("debug", "d"), usage="<type> [qty=1]")
     async def debugging(self, ctx: PoketwoContext, type, qty: int):
         if type == "xp":
-            await self.give_xp(ctx, amount=qty)
+            await self.give_xp(ctx.author, amount=qty)
             await ctx.send(f"Gave {ctx.author.name} {qty} XP!")
         if type in ["lvl", "level"]:
             await self.bot.mongo.update_member(ctx.author, {"$set": {f"{CHRISTMAS_PREFIX}level": qty}})
