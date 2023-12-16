@@ -360,6 +360,7 @@ class Member(Document):
     christmas_2023_level = fields.IntegerField(default=0)
     christmas_2023_xp = fields.IntegerField(default=0)
     christmas_2023_presents = fields.IntegerField(default=0)
+    christmas_2023_quests = fields.ListField(fields.DictField(), default=list)
 
     @property
     def selected_pokemon(self):
