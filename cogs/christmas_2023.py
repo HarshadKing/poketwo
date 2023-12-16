@@ -563,7 +563,7 @@ class Christmas(commands.Cog):
         new_level = member_level
 
         requirement = self.get_xp_requirement(new_level)
-        while new_xp > requirement:
+        while new_xp >= requirement:
             # While xp is larger than requirement, level up and lower xp
             # and at the same time update the requirement in case it changes
             # based on the new level.
