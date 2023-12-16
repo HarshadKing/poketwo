@@ -338,11 +338,10 @@ class Christmas(commands.Cog):
             if (
                 len(to_verify) == 0
                 or any(self.verify_condition(q.get("condition"), x) for x in to_verify)
-                and not q.get("completed")
-            ):
+            ) and not q.get("completed"):
                 await self.bot.mongo.db.member.update_one(
                     {"_id": user.id, f"{QUESTS_ID}._id": q["_id"]},
-                    {"$inc": {f"{QUESTS_ID}.$.progress": min(count, q["count"])}},
+                    {"$inc": {f"{QUESTS_ID}.$.progress": count if count + q["progress"] <= q["count"] else q["count"]}},
                 )
 
         await self.bot.redis.hdel("db:member", user.id)
