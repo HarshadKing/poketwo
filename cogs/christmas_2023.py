@@ -9,7 +9,7 @@ import discord
 from discord.ext import commands
 
 from cogs import mongo
-from cogs.mongo import Member
+from cogs.mongo import Member, PokemonBase
 from data.models import Species
 from helpers import checks, pagination
 from helpers.context import PoketwoContext
@@ -23,7 +23,7 @@ CHRISTMAS_PREFIX = "christmas_2023_"
 PASS_REWARDS = {
     1: {"reward": "event_pokemon", "id": 928},
     2: {"reward": "pokecoins", "amount": 2000},
-    3: {"reward": "iv_pokemon", "amount": 80},
+    3: {"reward": "iv_pokemon"},
     4: {"reward": "pokecoins", "amount": 2000},
     5: {"reward": "shards", "amount": 125},
     6: {"reward": "pokecoins", "amount": 2000},
@@ -33,7 +33,7 @@ PASS_REWARDS = {
     10: {"reward": "event_pokemon", "id": 965},
     11: {"reward": "pokecoins", "amount": 2500},
     12: {"reward": "pokecoins", "amount": 2500},
-    13: {"reward": "iv_pokemon", "amount": 80},
+    13: {"reward": "iv_pokemon"},
     14: {"reward": "pokecoins", "amount": 2500},
     15: {"reward": "shards", "amount": 125},
     16: {"reward": "pokecoins", "amount": 2500},
@@ -43,7 +43,7 @@ PASS_REWARDS = {
     20: {"reward": "event_pokemon", "id": 149},
     21: {"reward": "pokecoins", "amount": 3500},
     22: {"reward": "pokecoins", "amount": 3500},
-    23: {"reward": "iv_pokemon", "amount": 80},
+    23: {"reward": "iv_pokemon"},
     24: {"reward": "pokecoins", "amount": 3500},
     25: {"reward": "rarity_pokemon", "rarity": "ub", "amount": 3},
     26: {"reward": "pokecoins", "amount": 3500},
@@ -53,7 +53,7 @@ PASS_REWARDS = {
     30: {"reward": "event_pokemon", "id": 929},
     31: {"reward": "pokecoins", "amount": 4000},
     32: {"reward": "pokecoins", "amount": 4000},
-    33: {"reward": "iv_pokemon", "amount": 80},
+    33: {"reward": "iv_pokemon"},
     34: {"reward": "pokecoins", "amount": 4000},
     35: {"reward": "shards", "amount": 125},
     36: {"reward": "pokecoins", "amount": 4000},
@@ -63,7 +63,7 @@ PASS_REWARDS = {
     40: {"reward": "event_pokemon", "id": 311},
     41: {"reward": "pokecoins", "amount": 5000},
     42: {"reward": "pokecoins", "amount": 5000},
-    43: {"reward": "iv_pokemon", "amount": 80},
+    43: {"reward": "iv_pokemon"},
     44: {"reward": "pokecoins", "amount": 5000},
     45: {"reward": "shards", "amount": 125},
     46: {"reward": "pokecoins", "amount": 5000},
@@ -77,34 +77,35 @@ XP_REQUIREMENT = {"base": 1000, "extra": 500}
 BADGE_NAME = "christmas_2023"
 
 
-CHRISTMAS_PREFIX = "christmas_2023_"
-
 # TODO: FINALIZE CHANCES
 PRESENTS_ID = f"{CHRISTMAS_PREFIX}presents"
-PRESENT_CHANCES = {"pc": 0.25, "shards": 0.1, "event": 0.48, "rare": 0.12, "80iv-pokemon": 0.05}
+PRESENT_CHANCES = {"pokecoins": 0.25, "shards": 0.05, "redeems": 0.05, "event_pokemon": 0.48, "rarity_pokemon": 0.12, "iv_pokemon": 0.05}
 PRESENT_REWARD_AMOUNTS = {
-    "pc": range(2000, 4000),
+    "pokecoins": range(2000, 4000),
     "shards": range(10, 40),
-    "event": [1],
-    "rare": [1],
-    "80iv-pokemon": [1],
+    "redeems": range(1, 3),
+    "event_pokemon": [1],
+    "rarity_pokemon": [1],
+    "iv_pokemon": [1],
 }
 
 EVENT_CHANCES = {
     # These have been separated for ease of use
-    965: 0.11 / PRESENT_CHANCES["event"],  # TODO: Train Varoom ID
-    928: 0.096 / PRESENT_CHANCES["event"],  # TODO: Christmas Tree Smolliv ID
-    149: 0.096 / PRESENT_CHANCES["event"],  # TODO: Conductor Dragonite ID
-    929: 0.072 / PRESENT_CHANCES["event"],  # TODO: Christmas Tree Dolliv ID
-    311: 0.068 / PRESENT_CHANCES["event"],  # TODO: Pyjama Plusle & Minun ID
-    930: 0.038 / PRESENT_CHANCES["event"],  # TODO: Christmas Tree Arboliva ID
-    789: 0.01 / PRESENT_CHANCES["event"],  # TODO: Fireworks Cosmog ID
+    965: 0.11 / PRESENT_CHANCES["event_pokemon"],  # TODO: Train Varoom ID
+    928: 0.096 / PRESENT_CHANCES["event_pokemon"],  # TODO: Christmas Tree Smolliv ID
+    149: 0.096 / PRESENT_CHANCES["event_pokemon"],  # TODO: Conductor Dragonite ID
+    929: 0.072 / PRESENT_CHANCES["event_pokemon"],  # TODO: Christmas Tree Dolliv ID
+    311: 0.068 / PRESENT_CHANCES["event_pokemon"],  # TODO: Pyjama Plusle & Minun ID
+    930: 0.038 / PRESENT_CHANCES["event_pokemon"],  # TODO: Christmas Tree Arboliva ID
+    789: 0.01 / PRESENT_CHANCES["event_pokemon"],  # TODO: Fireworks Cosmog ID
 }
 EVENT_REWARDS = [*EVENT_CHANCES.keys()]
 EVENT_WEIGHTS = [*EVENT_CHANCES.values()]
 
 PRESENT_REWARDS = [*PRESENT_CHANCES.keys()]
 PRESENT_WEIGHTS = [*PRESENT_CHANCES.values()]
+
+IV_REWARD = 80
 
 
 class FlavorStrings:
@@ -114,6 +115,7 @@ class FlavorStrings:
     pokecoins = FlavorString("Pokécoins", "<:pokecoins:1185296751012356126>")
     event_pokemon = FlavorString("Event Pokémon")
     shards = FlavorString("Shards", "<:shards:1185296789918728263>")
+    redeem = FlavorString("Redeem")
     iv_pokemon = FlavorString("IV Pokémon", "<:present_green:1185312793948332062> ")
     mythical = FlavorString("Mythical Pokémon", "<:present_red:1185312798343962794> ")
     ub = FlavorString("Ultra Beast", "<:present_yellow:1185312800596308048>")
@@ -136,8 +138,11 @@ class Christmas(commands.Cog):
     @cached_property
     def pools(self) -> Dict[str, List[Species]]:
         p = {
-            "event": EVENT_REWARDS,
-            "rare": self.bot.data.list_mythical + self.bot.data.list_legendary + self.bot.data.list_ub,
+            "event_pokemon": EVENT_REWARDS,
+            "rarity_pokemon": self.bot.data.list_mythical + self.bot.data.list_legendary + self.bot.data.list_ub,
+            "ub": self.bot.data.list_ub,
+            "legendary": self.bot.data.list_legendary,
+            "mythical": self.bot.data.list_mythical,
             "non-event": self.bot.data.pokemon.keys(),
         }
         return {k: [self.bot.data.species_by_number(i) for i in v] for k, v in p.items()}
@@ -181,8 +186,40 @@ class Christmas(commands.Cog):
             return
         await self.bot.mongo.update_member(member, {"$set": {f"badges.{BADGE_NAME}": True}})
 
+    async def make_reward_pokemon(
+        self,
+        reward: str,
+        user: discord.User | discord.Member,
+        member: Member,
+    ) -> PokemonBase:
+        shiny_boost = 1
+        minimum_iv_percent = 0
+        match reward:
+            case "event_pokemon":
+                population = self.pools["event_pokemon"]
+                weights = EVENT_CHANCES
+                shiny_boost = 5
+            case "rarity_pokemon" | "ub" | "legendary" | "mythical":
+                pool = [x for x in self.pools[reward] if x.catchable]
+                population = pool
+                weights = [x.abundance for x in pool]
+            case "iv_pokemon":
+                pool = [x for x in self.pools["non-event"] if x.catchable]
+                population = pool
+                weights = [x.abundance for x in pool]
+                minimum_iv_percent = IV_REWARD
+
+        species = random.choices(population, weights, k=1)[0]
+        return await self.make_pokemon(
+            user,
+            member,
+            species=species,
+            shiny_boost=shiny_boost,
+            minimum_iv_percent=minimum_iv_percent,
+        )
+
     async def give_reward(self, user: discord.User | discord.Member, member: Member, level):
-        reward = PASS_REWARDS[level + 1] if level < len(PASS_REWARDS) else {"reward": "presents", "amount": 1}
+        reward = PASS_REWARDS[level + 1] if level < len(PASS_REWARDS) else {"reward": "present", "amount": 1}
         match reward["reward"]:
             case "pokecoins":
                 await self.bot.mongo.update_member(member, {"$inc": {"balance": reward["amount"]}})
@@ -190,27 +227,29 @@ class Christmas(commands.Cog):
             case "shards":
                 await self.bot.mongo.update_member(member, {"$inc": {"premium_balance": reward["amount"]}})
                 return await self.make_reward_text(reward=reward)
-            case "event_pokemon":
-                text = ""
-                pokemon = await self.make_pokemon(user, member, species=self.bot.data.species_by_number(reward["id"]))
+            case "event_pokemon" | "rarity_pokemon" | "iv_pokemon":
+                text = [await self.make_reward_text(reward)]
+                if reward.get("id"):
+                    pokemon = await self.make_pokemon(user, member, species=self.bot.data.species_by_number(reward["id"]))
+                    await self.bot.mongo.db.pokemon.insert_one(pokemon)
+                    pokemon_obj = self.bot.mongo.Pokemon.build_from_mongo(pokemon)
+                    text.append(f"- {pokemon_obj:liP}")
+                else:
+                    count = reward.get("amount", 1)
+                    # Pass in the rarity if the reward is a rare pokemon, otherwise just the reward
+                    inserts = [await self.make_reward_pokemon(reward.get("rarity", reward["reward"]), user, member) for i in range(count)]
 
-                await self.bot.mongo.db.pokemon.insert_many([pokemon])
-                pokemon_obj = self.bot.mongo.Pokemon.build_from_mongo(pokemon)
+                    await self.bot.mongo.db.pokemon.insert_many(inserts)
+                    for pokemon in inserts:
+                        pokemon_obj = self.bot.mongo.Pokemon.build_from_mongo(pokemon)
+                        text.append(f"- {pokemon_obj:liP}")
 
-                text += f"- {pokemon_obj:liP}"
-
-                if level == 50:
+                if reward.get("badge"):
                     await self.give_badge(member)
-                    text += "\n- Christmas 2023 badge"
-                return text
+                    text.append(f"- {FlavorStrings.badge}")
 
-            case "iv_pokemon":
-                # TODO: MAKE IV POKEMON FUNCITONALITIES
-                return
-            case "rarity_pokemon":
-                # TODO: MAKE RARITY POKEMON FUNCITONALITIES
-                return
-            case "presents":
+                return "\n".join(text)
+            case "present":
                 await self.bot.mongo.update_member(member, {"$inc": {f"{CHRISTMAS_PREFIX}presents": 1}})
                 return await self.make_reward_text(reward=reward)
 
@@ -251,25 +290,23 @@ class Christmas(commands.Cog):
 
     async def make_reward_text(self, reward, number=None):
         level_text = ""
-
+        amount = reward.get("amount", 1)
         if reward["reward"] == "iv_pokemon":
-            iv = reward["amount"]
             flavor = FlavorStrings.iv_pokemon
-            reward_text = f"{flavor.emoji} {iv}+ {flavor:!e}"
+            reward_text = f"{flavor.emoji} {amount} {IV_REWARD}+ {flavor:!e}"
 
         elif reward["reward"] == "rarity_pokemon":
-            amount = reward["amount"]
             flavor = getattr(FlavorStrings, reward["rarity"])
             reward_text = f"{flavor.emoji} {amount} {flavor:!e}"
 
         elif reward["reward"] == "event_pokemon":
             species = self.bot.data.species_by_number(reward["id"])
-            reward_text = f"{self.bot.sprites.get(species.dex_number)} {species}"
+            reward_text = f"{self.bot.sprites.get(species.dex_number)} {amount} {species}"
             if "badge" in reward:
-                reward_text += f" & {getattr(FlavorStrings, 'badge')}"
+                reward_text += f" & {FlavorStrings.badge}"
         else:
             flavor = getattr(FlavorStrings, reward["reward"])
-            reward_text = f"{flavor.emoji} {reward['amount']} {flavor:!e}"
+            reward_text = f"{flavor.emoji} {amount} {flavor:!e}"
 
         if number != None:
             if number < 10:
@@ -409,7 +446,7 @@ class Christmas(commands.Cog):
         )
         embed.set_author(icon_url=ctx.author.display_avatar.url, name=str(ctx.author))
 
-        update = {"$inc": {"balance": 0, "premium_balance": 0}}
+        update = {"$inc": {"balance": 0, "premium_balance": 0, "redeems": 0}}
         inserts = []
         text = []
 
@@ -417,43 +454,22 @@ class Christmas(commands.Cog):
             count = random.choice(PRESENT_REWARD_AMOUNTS[reward])
 
             match reward:
-                case "pc":
-                    text.append(f"- {count} {FlavorStrings.pokecoins:!e}")
+                case "pokecoins":
+                    flavor = getattr(FlavorStrings, reward)
+                    text.append(f"- {flavor.emoji} {count} {flavor:!e}")
                     update["$inc"]["balance"] += count
                 case "shards":
-                    text.append(f"- {count} {FlavorStrings.shards:!e}")
+                    flavor = getattr(FlavorStrings, reward)
+                    text.append(f"- {flavor.emoji} {count} {flavor:!e}")
                     update["$inc"]["premium_balance"] += count
-                case "event" | "rare" | "80iv-pokemon":
-                    shiny_boost = 1
-                    minimum_iv_percent = 0
-                    match reward:
-                        case "event":
-                            population = self.pools["event"]
-                            weights = EVENT_CHANCES
-                            shiny_boost = 5
-                        case "rare":
-                            pool = [x for x in self.pools["rare"] if x.catchable]
-                            population = pool
-                            weights = [x.abundance for x in pool]
-                        case "80iv-pokemon":
-                            pool = [x for x in self.pools["non-event"] if x.catchable]
-                            population = pool
-                            weights = [x.abundance for x in pool]
-                            minimum_iv_percent = 80
-
-                    species = random.choices(population, weights, k=1)[0]
-                    # TODO: Finalize shiny boost
-                    # TODO: Implement min_iv
-                    pokemon = await self.make_pokemon(
-                        ctx.author,
-                        member,
-                        species=species,
-                        shiny_boost=shiny_boost,
-                        minimum_iv_percent=minimum_iv_percent,
-                    )
+                case "redeems":
+                    flavor = FlavorStrings.redeem
+                    text.append(f"- {count} {flavor:!e{'' if count == 1 else 's'}}")
+                    update["$inc"]["redeems"] += count
+                case "event_pokemon" | "rarity_pokemon" | "iv_pokemon":
+                    pokemon = await self.make_reward_pokemon(reward, ctx.author, member)
                     pokemon_obj = self.bot.mongo.Pokemon.build_from_mongo(pokemon)
-
-                    text.append(f"- {pokemon_obj:liP} **({reward.upper()})**")  # TODO: Remove suffix
+                    text.append(f"- {pokemon_obj:liP}")
                     inserts.append(pokemon)
 
         await self.bot.mongo.update_member(ctx.author, update)
