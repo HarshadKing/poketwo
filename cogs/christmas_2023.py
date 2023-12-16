@@ -178,7 +178,7 @@ PRESENT_WEIGHTS = [*PRESENT_CHANCES.values()]
 
 QUESTS_ID = f"{CHRISTMAS_PREFIX}quests"
 
-QUEST_REWARDS = {"daily": 1100, "weekly": 2800}
+QUEST_REWARDS = {"daily": 1100, "weekly": 2800, "catch": 1}
 
 
 def get_quest_description(quest: dict):
@@ -571,7 +571,10 @@ class Christmas(commands.Cog):
 
     ## Event handlers
 
-    # TODO: on_catch event to give 1 xp
+    @commands.Cog.listener("on_catch")
+    async def xp_per_catch(self, ctx, species, id):
+        # Giving XP this way may lead to race conditions?
+        await self.give_xp(ctx.author, QUEST_REWARDS["catch"])
 
     # PRESENTS
 
@@ -774,11 +777,10 @@ class Christmas(commands.Cog):
 
                 inc_xp = QUEST_REWARDS[q["type"]]
                 with contextlib.suppress(discord.HTTPException):
-                    # TODO: Decide user instead of ctx
-                    # await self.give_xp(user, inc_xp)
                     await user.send(
                         f"You completed the {FlavorStrings.pokepass} quest **{get_quest_description(q)}**! You received **{inc_xp}XP**!"
                     )
+                    await self.give_xp(user, inc_xp)
 
     def verify_condition(self, condition: dict, species: Species):
         """Function to verify conditions of a pokemon's species with quest requirements."""
@@ -817,8 +819,8 @@ class Christmas(commands.Cog):
 
     ## Event listeners
 
-    @commands.Cog.listener()
-    async def on_catch(self, ctx, species, id):
+    @commands.Cog.listener("on_catch")
+    async def progress_catch_quests(self, ctx, species, id):
         await self.on_quest_event(ctx.author, "catch", [species])
 
     @commands.Cog.listener()
