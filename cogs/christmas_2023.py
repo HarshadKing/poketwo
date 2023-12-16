@@ -23,7 +23,61 @@ from helpers.utils import FlavorString
 if TYPE_CHECKING:
     from bot import ClusterBot
 
+# GENERAL
+
 CHRISTMAS_PREFIX = "christmas_2023_"
+BADGE_NAME = "christmas_2023"
+IV_REWARD = 80
+
+
+class FlavorStrings:
+    """Holds various flavor strings."""
+
+    pokepass = FlavorString("Poképass")
+    pokecoins = FlavorString("Pokécoins", "<:pokecoins:1185296751012356126>")
+    event_pokemon = FlavorString("Event Pokémon")
+    shards = FlavorString("Shards", "<:shards:1185296789918728263>")
+    redeem = FlavorString("Redeem")
+    iv_pokemon = FlavorString("IV Pokémon", "<:present_green:1185312793948332062> ")
+    mythical = FlavorString("Mythical Pokémon", "<:present_red:1185312798343962794> ")
+    ub = FlavorString("Ultra Beast", "<:present_yellow:1185312800596308048>")
+    legendary = FlavorString("Legendary Pokémon", "<:present_purple:1185312796854980719>")
+    present = FlavorString("Christmas Present", ":gift:")
+    badge = FlavorString("Christmas 2023 Badge", "<:badge_christmas_2023:1185512567716708435>")
+
+
+TYPES = [
+    "Normal",
+    "Fighting",
+    "Flying",
+    "Poison",
+    "Ground",
+    "Rock",
+    "Bug",
+    "Ghost",
+    "Steel",
+    "Fire",
+    "Water",
+    "Grass",
+    "Electric",
+    "Psychic",
+    "Ice",
+    "Dragon",
+    "Dark",
+    "Fairy",
+]
+REGIONS = ("kanto", "johto", "hoenn", "sinnoh", "unova", "kalos", "alola", "galar")
+RARITIES = ("mythical", "legendary", "ub")
+FORMS = ("alolan", "galarian", "hisuian")
+
+
+## COMMAND STRINGS
+CMD_CHRISTMAS = "`{0} christmas`"
+CMD_OPEN = "`{0} christmas open [qty=1]`"
+
+
+# POKEPASS
+
 PASS_REWARDS = {
     1: {"reward": "event_pokemon", "id": 928},
     2: {"reward": "pokecoins", "amount": 2000},
@@ -78,11 +132,13 @@ PASS_REWARDS = {
 }
 
 XP_REQUIREMENT = {"base": 1000, "extra": 500}
-BADGE_NAME = "christmas_2023"
 
+
+# PRESENTS
+
+PRESENTS_ID = f"{CHRISTMAS_PREFIX}presents"
 
 # TODO: FINALIZE CHANCES
-PRESENTS_ID = f"{CHRISTMAS_PREFIX}presents"
 PRESENT_CHANCES = {
     "pokecoins": 0.25,
     "shards": 0.05,
@@ -116,61 +172,12 @@ EVENT_WEIGHTS = [*EVENT_CHANCES.values()]
 PRESENT_REWARDS = [*PRESENT_CHANCES.keys()]
 PRESENT_WEIGHTS = [*PRESENT_CHANCES.values()]
 
-IV_REWARD = 80
+
+# QUESTS
 
 QUESTS_ID = f"{CHRISTMAS_PREFIX}quests"
 
-
-class FlavorStrings:
-    """Holds various flavor strings"""
-
-    pokepass = FlavorString("Poképass")
-    pokecoins = FlavorString("Pokécoins", "<:pokecoins:1185296751012356126>")
-    event_pokemon = FlavorString("Event Pokémon")
-    shards = FlavorString("Shards", "<:shards:1185296789918728263>")
-    redeem = FlavorString("Redeem")
-    iv_pokemon = FlavorString("IV Pokémon", "<:present_green:1185312793948332062> ")
-    mythical = FlavorString("Mythical Pokémon", "<:present_red:1185312798343962794> ")
-    ub = FlavorString("Ultra Beast", "<:present_yellow:1185312800596308048>")
-    legendary = FlavorString("Legendary Pokémon", "<:present_purple:1185312796854980719>")
-    present = FlavorString("Christmas Present", ":gift:")
-    badge = FlavorString("Christmas 2023 Badge", "<:badge_christmas_2023:1185512567716708435>")
-
-
-# Command strings
-CMD_CHRISTMAS = "`{0} christmas`"
-CMD_OPEN = "`{0} christmas open [qty=1]`"
-
-
 QUEST_REWARDS = {"daily": 1100, "weekly": 2800}
-
-
-TYPES = [
-    "Normal",
-    "Fighting",
-    "Flying",
-    "Poison",
-    "Ground",
-    "Rock",
-    "Bug",
-    "Ghost",
-    "Steel",
-    "Fire",
-    "Water",
-    "Grass",
-    "Electric",
-    "Psychic",
-    "Ice",
-    "Dragon",
-    "Dark",
-    "Fairy",
-]
-
-REGIONS = ("kanto", "johto", "hoenn", "sinnoh", "unova", "kalos", "alola", "galar")
-
-RARITIES = ("mythical", "legendary", "ub")
-
-FORMS = ("alolan", "galarian", "hisuian")
 
 
 def get_quest_description(quest: dict):
@@ -223,6 +230,8 @@ def get_quest_description(quest: dict):
 
 
 def make_quest(event: str, count_range: range, **condition):
+    """Function to make a quest with any event, range of count and conditions."""
+
     return lambda: {
         "event": event,
         "count": random.choice(count_range),
@@ -260,11 +269,16 @@ WEEKLY_QUESTS = {
 }
 
 
+# MAIN COG
+
+
 class Christmas(commands.Cog):
     """Christmas event commands."""
 
     def __init__(self, bot):
         self.bot: ClusterBot = bot
+
+    # GENERAL
 
     @cached_property
     def pools(self) -> Dict[str, List[Species]]:
@@ -287,6 +301,8 @@ class Christmas(commands.Cog):
         shiny_boost: Optional[int] = 1,
         minimum_iv_percent: Optional[int] = 0,  # Minimum IV percentage 0-100
     ):
+        """Function to build a pokémon."""
+
         ivs = [mongo.random_iv() for _ in range(6)]
         if minimum_iv_percent:
             min_iv = math.ceil(minimum_iv_percent / 100 * 186)
@@ -312,17 +328,14 @@ class Christmas(commands.Cog):
             "idx": await self.bot.mongo.fetch_next_idx(owner),
         }
 
-    async def give_badge(self, member: Member):
-        if member.badges.get(BADGE_NAME):
-            return
-        await self.bot.mongo.update_member(member, {"$set": {f"badges.{BADGE_NAME}": True}})
-
     async def make_reward_pokemon(
         self,
         reward: str,
         user: discord.User | discord.Member,
         member: Member,
     ) -> PokemonBase:
+        """Function to build specific kinds of pokémon."""
+
         shiny_boost = 1
         minimum_iv_percent = 0
         match reward:
@@ -349,113 +362,14 @@ class Christmas(commands.Cog):
             minimum_iv_percent=minimum_iv_percent,
         )
 
-    async def give_reward(self, user: discord.User | discord.Member, member: Member, level):
-        reward = PASS_REWARDS[level + 1] if level < len(PASS_REWARDS) else {"reward": "present", "amount": 1}
-        match reward["reward"]:
-            case "pokecoins":
-                await self.bot.mongo.update_member(member, {"$inc": {"balance": reward["amount"]}})
-                return await self.make_reward_text(reward=reward)
-            case "shards":
-                await self.bot.mongo.update_member(member, {"$inc": {"premium_balance": reward["amount"]}})
-                return await self.make_reward_text(reward=reward)
-            case "event_pokemon" | "rarity_pokemon" | "iv_pokemon":
-                text = [await self.make_reward_text(reward)]
-                if reward.get("id"):
-                    pokemon = await self.make_pokemon(
-                        user, member, species=self.bot.data.species_by_number(reward["id"])
-                    )
-                    await self.bot.mongo.db.pokemon.insert_one(pokemon)
-                    pokemon_obj = self.bot.mongo.Pokemon.build_from_mongo(pokemon)
-                    text.append(f"- {pokemon_obj:liP}")
-                else:
-                    count = reward.get("amount", 1)
-                    # Pass in the rarity if the reward is a rare pokemon, otherwise just the reward
-                    inserts = [
-                        await self.make_reward_pokemon(reward.get("rarity", reward["reward"]), user, member)
-                        for i in range(count)
-                    ]
+    # POKEPASS
 
-                    await self.bot.mongo.db.pokemon.insert_many(inserts)
-                    for pokemon in inserts:
-                        pokemon_obj = self.bot.mongo.Pokemon.build_from_mongo(pokemon)
-                        text.append(f"- {pokemon_obj:liP}")
-
-                if reward.get("badge"):
-                    await self.give_badge(member)
-                    text.append(f"- {FlavorStrings.badge}")
-
-                return "\n".join(text)
-            case "present":
-                await self.bot.mongo.update_member(member, {"$inc": {f"{CHRISTMAS_PREFIX}presents": 1}})
-                return await self.make_reward_text(reward=reward)
-
-    async def give_xp(self, user: discord.User, amount):
-        await self.bot.mongo.update_member(user, {"$inc": {f"{CHRISTMAS_PREFIX}xp": amount}})
-        member = await self.bot.mongo.fetch_member_info(user)
-
-        requirement = (
-            XP_REQUIREMENT["base"]
-            if member[f"{CHRISTMAS_PREFIX}level"] < len(PASS_REWARDS)
-            else XP_REQUIREMENT["extra"]
-        )
-        # Handling level up
-        if member[f"{CHRISTMAS_PREFIX}xp"] >= requirement:
-            await self.level_up(user, member)
-
-            # If the user gets more than the required xp to level up, give the rest of the xp as awell
-            if amount > requirement:
-                await self.give_xp(user, amount=amount - requirement)
-
-    async def level_up(self, user: discord.User | discord.Member, member: Member):
-        await self.bot.mongo.update_member(
-            member, {"$inc": {f"{CHRISTMAS_PREFIX}level": 1}, "$set": {f"{CHRISTMAS_PREFIX}xp": 0}}
-        )
-        user_level = member[f"{CHRISTMAS_PREFIX}level"] + 1
-        embed = self.bot.Embed(
-            title=f"Congratulations, You are now level {user_level}!",
-            description=f"",
-        )
-
-        embed.add_field(
-            name="Your rewards:", value=await self.give_reward(user, member, member[f"{CHRISTMAS_PREFIX}level"])
-        )
-
-        # await ctx.send(embed=embed)
-
-        await self.bot.send_dm(member, embed=embed)
-
-    async def make_reward_text(self, reward, number=None):
-        level_text = ""
-        amount = reward.get("amount", 1)
-        if reward["reward"] == "iv_pokemon":
-            flavor = FlavorStrings.iv_pokemon
-            reward_text = f"{flavor.emoji} {amount} {IV_REWARD}+ {flavor:!e}"
-
-        elif reward["reward"] == "rarity_pokemon":
-            flavor = getattr(FlavorStrings, reward["rarity"])
-            reward_text = f"{flavor.emoji} {amount} {flavor:!e}"
-
-        elif reward["reward"] == "event_pokemon":
-            species = self.bot.data.species_by_number(reward["id"])
-            reward_text = f"{self.bot.sprites.get(species.dex_number)} {amount} {species}"
-            if "badge" in reward:
-                reward_text += f" & {FlavorStrings.badge}"
-        else:
-            flavor = getattr(FlavorStrings, reward["reward"])
-            reward_text = f"{flavor.emoji} {amount} {flavor:!e}"
-
-        if number != None:
-            if number < 10:
-                level_text = f"` {number}:`"
-            else:
-                level_text = f"`{number}:`"
-
-        return f"{level_text}　{reward_text}"
+    ## Commands
 
     @checks.has_started()
     @commands.group(aliases=("event", "ev"), invoke_without_command=True, case_insensitive=True)
     async def christmas(self, ctx: PoketwoContext):
-        """View christmas event main menu."""
+        """Christmas event main menu. Contains Poképass details and presents inventory."""
 
         embed = self.bot.Embed(title=f"Christmas 2023 - The Poké Express", description="")
 
@@ -503,7 +417,7 @@ class Christmas(commands.Cog):
         case_insensitive=True,
     )
     async def rewards(self, ctx: PoketwoContext):
-        """View all the rewards from the pass menu."""
+        """View all the rewards obtainable from the Poképass."""
 
         member = await self.bot.mongo.fetch_member_info(ctx.author)
         level = member[f"{CHRISTMAS_PREFIX}level"]
@@ -526,9 +440,148 @@ class Christmas(commands.Cog):
         self.bot.menus[ctx.author.id] = pages
         await pages.start(ctx)
 
+    @commands.is_owner()
+    @christmas.command(aliases=("debug", "d"), usage="<type> [qty=1]")
+    async def debugging(self, ctx: PoketwoContext, type, qty: int):
+        """Admin-only debugging command to grant XP and Levels."""
+
+        if type == "xp":
+            await self.give_xp(ctx.author, amount=qty)
+            await ctx.send(f"Gave {ctx.author.name} {qty} XP!")
+        if type in ["lvl", "level"]:
+            await self.bot.mongo.update_member(ctx.author, {"$set": {f"{CHRISTMAS_PREFIX}level": qty}})
+            await ctx.send(f"Set {ctx.author.name}'s level to {qty}!")
+
+    ## Utils
+
+    async def make_reward_text(self, reward, number=None):
+        """Function to build the text for a Poképass reward."""
+
+        level_text = ""
+        amount = reward.get("amount", 1)
+        if reward["reward"] == "iv_pokemon":
+            flavor = FlavorStrings.iv_pokemon
+            reward_text = f"{flavor.emoji} {amount} {IV_REWARD}+ {flavor:!e}"
+
+        elif reward["reward"] == "rarity_pokemon":
+            flavor = getattr(FlavorStrings, reward["rarity"])
+            reward_text = f"{flavor.emoji} {amount} {flavor:!e}"
+
+        elif reward["reward"] == "event_pokemon":
+            species = self.bot.data.species_by_number(reward["id"])
+            reward_text = f"{self.bot.sprites.get(species.dex_number)} {amount} {species}"
+            if "badge" in reward:
+                reward_text += f" & {FlavorStrings.badge}"
+        else:
+            flavor = getattr(FlavorStrings, reward["reward"])
+            reward_text = f"{flavor.emoji} {amount} {flavor:!e}"
+
+        if number != None:
+            if number < 10:
+                level_text = f"` {number}:`"
+            else:
+                level_text = f"`{number}:`"
+
+        return f"{level_text}　{reward_text}"
+
+    async def give_badge(self, member: Member):
+        """Function to give a user the christmas badge."""
+
+        if member.badges.get(BADGE_NAME):
+            return
+        await self.bot.mongo.update_member(member, {"$set": {f"badges.{BADGE_NAME}": True}})
+
+    async def give_reward(self, user: discord.User | discord.Member, member: Member, level):
+        """Function to give a user rewards from the Poképass according to their level"""
+
+        reward = PASS_REWARDS[level + 1] if level < len(PASS_REWARDS) else {"reward": "present", "amount": 1}
+        match reward["reward"]:
+            case "pokecoins":
+                await self.bot.mongo.update_member(member, {"$inc": {"balance": reward["amount"]}})
+                return await self.make_reward_text(reward=reward)
+            case "shards":
+                await self.bot.mongo.update_member(member, {"$inc": {"premium_balance": reward["amount"]}})
+                return await self.make_reward_text(reward=reward)
+            case "event_pokemon" | "rarity_pokemon" | "iv_pokemon":
+                text = [await self.make_reward_text(reward)]
+                if reward.get("id"):
+                    pokemon = await self.make_pokemon(
+                        user, member, species=self.bot.data.species_by_number(reward["id"])
+                    )
+                    await self.bot.mongo.db.pokemon.insert_one(pokemon)
+                    pokemon_obj = self.bot.mongo.Pokemon.build_from_mongo(pokemon)
+                    text.append(f"- {pokemon_obj:liP}")
+                else:
+                    count = reward.get("amount", 1)
+                    # Pass in the rarity if the reward is a rare pokemon, otherwise just the reward
+                    inserts = [
+                        await self.make_reward_pokemon(reward.get("rarity", reward["reward"]), user, member)
+                        for i in range(count)
+                    ]
+
+                    await self.bot.mongo.db.pokemon.insert_many(inserts)
+                    for pokemon in inserts:
+                        pokemon_obj = self.bot.mongo.Pokemon.build_from_mongo(pokemon)
+                        text.append(f"- {pokemon_obj:liP}")
+
+                if reward.get("badge"):
+                    await self.give_badge(member)
+                    text.append(f"- {FlavorStrings.badge}")
+
+                return "\n".join(text)
+            case "present":
+                await self.bot.mongo.update_member(member, {"$inc": {f"{CHRISTMAS_PREFIX}presents": 1}})
+                return await self.make_reward_text(reward=reward)
+
+    async def level_up(self, user: discord.User | discord.Member, member: Member):
+        """Function to level a user up and DM the message along with rewards earned."""
+
+        await self.bot.mongo.update_member(
+            member, {"$inc": {f"{CHRISTMAS_PREFIX}level": 1}, "$set": {f"{CHRISTMAS_PREFIX}xp": 0}}
+        )
+        user_level = member[f"{CHRISTMAS_PREFIX}level"] + 1
+        embed = self.bot.Embed(
+            title=f"Congratulations, You are now level {user_level}!",
+            description=f"",
+        )
+
+        embed.add_field(
+            name="Your rewards:", value=await self.give_reward(user, member, member[f"{CHRISTMAS_PREFIX}level"])
+        )
+
+        await self.bot.send_dm(member, embed=embed)
+
+    async def give_xp(self, user: discord.User, amount):
+        """Function to give xp to a user and level up if requirements met."""
+
+        await self.bot.mongo.update_member(user, {"$inc": {f"{CHRISTMAS_PREFIX}xp": amount}})
+        member = await self.bot.mongo.fetch_member_info(user)
+
+        requirement = (
+            XP_REQUIREMENT["base"]
+            if member[f"{CHRISTMAS_PREFIX}level"] < len(PASS_REWARDS)
+            else XP_REQUIREMENT["extra"]
+        )
+        # Handling level up
+        if member[f"{CHRISTMAS_PREFIX}xp"] >= requirement:
+            await self.level_up(user, member)
+
+            # If the user gets more than the required xp to level up, give the rest of the xp as awell
+            if amount > requirement:
+                await self.give_xp(user, amount=amount - requirement)
+
+    ## Event handlers
+
+    # TODO: on_catch event to give 1 xp
+
+    # PRESENTS
+
+    ## Commands
+
     @checks.has_started()
     @christmas.command()
     async def open(self, ctx: PoketwoContext, qty: Optional[int] = 1):
+        """Command to open presents. Max qty at a time is 15."""
 
         if qty <= 0:
             return await ctx.send(f"Nice try...")
@@ -586,17 +639,6 @@ class Christmas(commands.Cog):
         embed.description = "\n".join(text)
         await ctx.reply(embed=embed, mention_author=False)
 
-    # DEBUGGING COMMAND
-    @commands.is_owner()
-    @christmas.command(aliases=("debug", "d"), usage="<type> [qty=1]")
-    async def debugging(self, ctx: PoketwoContext, type, qty: int):
-        if type == "xp":
-            await self.give_xp(ctx.author, amount=qty)
-            await ctx.send(f"Gave {ctx.author.name} {qty} XP!")
-        if type in ["lvl", "level"]:
-            await self.bot.mongo.update_member(ctx.author, {"$set": {f"{CHRISTMAS_PREFIX}level": qty}})
-            await ctx.send(f"Set {ctx.author.name}'s level to {qty}!")
-
     @commands.is_owner()
     @christmas.command(aliases=("givepresent", "gp"))
     async def addpresent(
@@ -605,51 +647,14 @@ class Christmas(commands.Cog):
         user: FetchUserConverter,
         qty: Optional[int] = 1,
     ):
-        """Give presents to a user."""
+        """Admin-only command to give presents to a user."""
 
         await self.bot.mongo.update_member(user, {"$inc": {PRESENTS_ID: qty}})
         await ctx.send(f"Gave **{user}** {qty}x {FlavorStrings.present:b}.")
 
-    async def fetch_quests(self, member: Union[discord.User, discord.Member]) -> List[Dict[str, Any]]:
-        member_info = await self.bot.mongo.fetch_member_info(member)
+    # QUESTS
 
-        quests = [q for q in member_info[QUESTS_ID] if datetime.now() < q["expires"]]
-
-        daily_quests = [q for q in quests if q["type"] == "daily"]
-        weekly_quests = [q for q in quests if q["type"] == "weekly"]
-
-        if not daily_quests:
-            quests.extend(
-                [
-                    {
-                        **q(),
-                        "_id": str(uuid.uuid4()),
-                        "progress": 0,
-                        "type": "daily",
-                        "expires": datetime.now() + timedelta(days=1),
-                    }
-                    for q in random.choices(list(DAILY_QUESTS.keys()), list(DAILY_QUESTS.values()), k=5)
-                ]
-            )
-
-        if not weekly_quests:
-            quests.extend(
-                [
-                    {
-                        **q(),
-                        "_id": str(uuid.uuid4()),
-                        "progress": 0,
-                        "type": "weekly",
-                        "expires": datetime.now() + timedelta(days=7),
-                    }
-                    for q in random.choices(list(WEEKLY_QUESTS.keys()), list(WEEKLY_QUESTS.values()), k=5)
-                ]
-            )
-
-        if not daily_quests or not weekly_quests:
-            await self.bot.mongo.update_member(member, {"$set": {QUESTS_ID: quests}})
-
-        return quests
+    ## Commands
 
     @checks.has_started()
     @christmas.command(aliases=["q"])
@@ -693,6 +698,8 @@ class Christmas(commands.Cog):
     @commands.is_owner()
     @christmas.command()
     async def setprogress(self, ctx: PoketwoContext, index: int, progress: int):
+        """Admin-only debugging command to set progress of a quest."""
+
         quests = await self.fetch_quests(ctx.author)
         if not quests:
             return await ctx.send("No quests")
@@ -708,7 +715,52 @@ class Christmas(commands.Cog):
         await self.bot.redis.hdel("db:member", ctx.author.id)
         await ctx.message.add_reaction("✅")
 
+    ## Utils
+
+    async def fetch_quests(self, member: Union[discord.User, discord.Member]) -> List[Dict[str, Any]]:
+        member_info = await self.bot.mongo.fetch_member_info(member)
+
+        quests = [q for q in member_info[QUESTS_ID] if datetime.now() < q["expires"]]
+
+        daily_quests = [q for q in quests if q["type"] == "daily"]
+        weekly_quests = [q for q in quests if q["type"] == "weekly"]
+
+        if not daily_quests:
+            quests.extend(
+                [
+                    {
+                        **q(),
+                        "_id": str(uuid.uuid4()),
+                        "progress": 0,
+                        "type": "daily",
+                        "expires": datetime.now() + timedelta(days=1),
+                    }
+                    for q in random.choices(list(DAILY_QUESTS.keys()), list(DAILY_QUESTS.values()), k=5)
+                ]
+            )
+
+        if not weekly_quests:
+            quests.extend(
+                [
+                    {
+                        **q(),
+                        "_id": str(uuid.uuid4()),
+                        "progress": 0,
+                        "type": "weekly",
+                        "expires": datetime.now() + timedelta(days=7),
+                    }
+                    for q in random.choices(list(WEEKLY_QUESTS.keys()), list(WEEKLY_QUESTS.values()), k=5)
+                ]
+            )
+
+        if not daily_quests or not weekly_quests:
+            await self.bot.mongo.update_member(member, {"$set": {QUESTS_ID: quests}})
+
+        return quests
+
     async def check_quests(self, user: Union[discord.User, discord.Member]):
+        """Function to check for quest completions."""
+
         quests = await self.fetch_quests(user)
         if not quests:
             return
@@ -730,6 +782,8 @@ class Christmas(commands.Cog):
                     )
 
     def verify_condition(self, condition: dict, species: Species):
+        """Function to verify conditions of a pokemon's species with quest requirements."""
+
         if condition is not None:
             for k, v in condition.items():
                 if k == "type" and v not in species.types:
@@ -741,6 +795,8 @@ class Christmas(commands.Cog):
         return True
 
     async def on_quest_event(self, user: Union[discord.User, discord.Member], event: str, to_verify: list, *, count=1):
+        """Function that is called on every event that is received. This checks for valid quests and progresses accordingly."""
+
         quests = await self.fetch_quests(user)
         if not quests:
             return
@@ -759,6 +815,8 @@ class Christmas(commands.Cog):
 
         await self.bot.redis.hdel("db:member", user.id)
         await self.check_quests(user)
+
+    ## Event listeners
 
     @commands.Cog.listener()
     async def on_catch(self, ctx, species, id):
