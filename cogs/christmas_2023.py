@@ -199,7 +199,7 @@ class Christmas(commands.Cog):
     async def fetch_quests(self, member: Union[discord.User, discord.Member]) -> List[Dict[str, Any]]:
         member_info = await self.bot.mongo.fetch_member_info(member)
 
-        quests = [q for q in member_info[QUESTS_ID] if discord.utils.utcnow() < q["expires"]]
+        quests = [q for q in member_info[QUESTS_ID] if datetime.now() < q["expires"]]
 
         daily_quests = [q for q in quests if q["type"] == "daily"]
         weekly_quests = [q for q in quests if q["type"] == "weekly"]
@@ -212,7 +212,7 @@ class Christmas(commands.Cog):
                         "_id": str(uuid.uuid4()),
                         "progress": 0,
                         "type": "daily",
-                        "expires": discord.utils.utcnow() + timedelta(days=1),
+                        "expires": datetime.now() + timedelta(days=1),
                     }
                     for q in random.choices(list(DAILY_QUESTS.keys()), list(DAILY_QUESTS.values()), k=5)
                 ]
@@ -226,7 +226,7 @@ class Christmas(commands.Cog):
                         "_id": str(uuid.uuid4()),
                         "progress": 0,
                         "type": "weekly",
-                        "expires": discord.utils.utcnow() + timedelta(days=7),
+                        "expires": datetime.now() + timedelta(days=7),
                     }
                     for q in random.choices(list(WEEKLY_QUESTS.keys()), list(WEEKLY_QUESTS.values()), k=5)
                 ]
