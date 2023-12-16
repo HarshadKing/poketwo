@@ -375,11 +375,7 @@ class Christmas(commands.Cog):
         ## POKÉPASS VALUES
         member = await self.bot.mongo.fetch_member_info(ctx.author)
 
-        requirement = (
-            XP_REQUIREMENT["base"]
-            if member[f"{CHRISTMAS_PREFIX}level"] < len(PASS_REWARDS)
-            else XP_REQUIREMENT["extra"]
-        )
+        requirement = self.get_xp_requirement(member[f"{CHRISTMAS_PREFIX}level"])
 
         embed.add_field(name="Your Level:", value=f"{member[f'{CHRISTMAS_PREFIX}level']}", inline=False)
         embed.add_field(name="Your XP:", value=f"{member[f'{CHRISTMAS_PREFIX}xp']} / {requirement}", inline=False)
@@ -532,42 +528,49 @@ class Christmas(commands.Cog):
                 await self.bot.mongo.update_member(member, {"$inc": {f"{CHRISTMAS_PREFIX}presents": 1}})
                 return await self.make_reward_text(reward=reward)
 
-    async def level_up(self, user: discord.User | discord.Member, member: Member):
+    async def reward_level_up(self, user: discord.User | discord.Member, member: Member, level: int):
         """Function to level a user up and DM the message along with rewards earned."""
 
-        await self.bot.mongo.update_member(
-            member, {"$inc": {f"{CHRISTMAS_PREFIX}level": 1}, "$set": {f"{CHRISTMAS_PREFIX}xp": 0}}
-        )
-        user_level = member[f"{CHRISTMAS_PREFIX}level"] + 1
         embed = self.bot.Embed(
-            title=f"Congratulations, You are now level {user_level}!",
+            title=f"Congratulations, You are now level {level}!",
             description=f"",
         )
 
         embed.add_field(
-            name="Your rewards:", value=await self.give_reward(user, member, member[f"{CHRISTMAS_PREFIX}level"])
+            name="Your rewards:", value=await self.give_reward(user, member, level)
         )
 
-        await self.bot.send_dm(member, embed=embed)
+        await self.bot.send_dm(user, embed=embed)
+
+    def get_xp_requirement(self, level: int):
+        return (
+            XP_REQUIREMENT["base"]
+            if level < len(PASS_REWARDS)
+            else XP_REQUIREMENT["extra"]
+        )
 
     async def give_xp(self, user: discord.User, amount):
         """Function to give xp to a user and level up if requirements met."""
 
-        await self.bot.mongo.update_member(user, {"$inc": {f"{CHRISTMAS_PREFIX}xp": amount}})
         member = await self.bot.mongo.fetch_member_info(user)
+        member_xp = member[f"{CHRISTMAS_PREFIX}xp"]
+        member_level = member[f"{CHRISTMAS_PREFIX}level"]
 
-        requirement = (
-            XP_REQUIREMENT["base"]
-            if member[f"{CHRISTMAS_PREFIX}level"] < len(PASS_REWARDS)
-            else XP_REQUIREMENT["extra"]
-        )
-        # Handling level up
-        if member[f"{CHRISTMAS_PREFIX}xp"] >= requirement:
-            await self.level_up(user, member)
+        new_xp = member_xp + amount
+        new_level = member_level
 
-            # If the user gets more than the required xp to level up, give the rest of the xp as awell
-            if amount > requirement:
-                await self.give_xp(user, amount=amount - requirement)
+        requirement = self.get_xp_requirement(new_level)
+        while new_xp // requirement > 0:
+            new_level += 1
+            new_xp -= requirement
+            await self.reward_level_up(user, member, new_level)
+            requirement = self.get_xp_requirement(new_level)
+
+        update = {"$inc": {f"{CHRISTMAS_PREFIX}xp": new_xp - member_xp}}
+        if new_level > member_level:
+            update["$inc"][f"{CHRISTMAS_PREFIX}level"] = new_level - member_level
+
+        await self.bot.mongo.update_member(user, update)
 
     ## Event handlers
 
