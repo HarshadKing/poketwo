@@ -43,7 +43,7 @@ class FlavorStrings:
     mythical = FlavorString("Mythical Pokémon", "<:present_red:1185312798343962794> ")
     ub = FlavorString("Ultra Beast", "<:present_yellow:1185312800596308048>")
     legendary = FlavorString("Legendary Pokémon", "<:present_purple:1185312796854980719>")
-    present = FlavorString("Christmas Present", ":gift:")
+    present = FlavorString("Christmas Present", "<:present_blue:1185720101543096442>")
     badge = FlavorString("Christmas 2023 Badge", "<:badge_christmas_2023:1185512567716708435>")
 
 
