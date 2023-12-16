@@ -19,6 +19,7 @@ from helpers import checks, pagination
 from helpers.context import PoketwoContext
 from helpers.converters import FetchUserConverter
 from helpers.utils import FlavorString
+from lib.probability import random_iv_composition
 
 if TYPE_CHECKING:
     from bot import ClusterBot
@@ -305,9 +306,7 @@ class Christmas(commands.Cog):
 
         ivs = [mongo.random_iv() for _ in range(6)]
         if minimum_iv_percent:
-            min_iv = math.ceil(minimum_iv_percent / 100 * 186)
-            while sum(ivs) < min_iv:  # TODO: Use a better method to do this
-                ivs = [mongo.random_iv() for _ in range(6)]
+            ivs = random_iv_composition(sum_lower_bound=math.ceil(minimum_iv_percent / 100 * 186))
 
         shiny = member.determine_shiny(species, boost=shiny_boost)
         return {
