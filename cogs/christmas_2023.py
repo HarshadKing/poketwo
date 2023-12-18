@@ -1,4 +1,5 @@
 from __future__ import annotations
+import asyncio
 from functools import cached_property
 import math
 import contextlib
@@ -10,7 +11,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 import uuid
 
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 
 from cogs import mongo
 from cogs.mongo import Member, PokemonBase
@@ -74,6 +75,7 @@ FORMS = ("alolan", "galarian", "hisuian")
 
 ## COMMAND STRINGS
 CMD_CHRISTMAS = "`{0} christmas`"
+CMD_MINIGAMES = "`{0} christmas minigames`"
 CMD_OPEN = "`{0} christmas open [qty=1]`"
 
 
@@ -335,8 +337,14 @@ class Christmas(commands.Cog):
 
     def __init__(self, bot):
         self.bot: ClusterBot = bot
+        if self.bot.cluster_idx == 0:
+            self.notify_quests.start()
 
     # GENERAL
+
+    async def cog_unload(self):
+        if self.bot.cluster_idx == 0:
+            self.notify_quests.cancel()
 
     @cached_property
     def pools(self) -> Dict[str, List[Species]]:
@@ -784,12 +792,32 @@ class Christmas(commands.Cog):
         await self.bot.redis.hdel("db:member", ctx.author.id)
         await ctx.message.add_reaction("✅")
 
+    ## Loop to notify when quests reset
+
+    @tasks.loop(seconds=20)
+    async def notify_quests(self):
+        quests = self.bot.mongo.Member.find(
+            {
+                QUESTS_ID: {
+                    "$elemMatch": {
+                        "expires": {"$lt": datetime.now()}
+                    }
+                }
+            }
+        )
+
+        async for member in quests:
+            await asyncio.create_task(self.renew_quests(member))
+            await asyncio.create_task(self.bot.send_dm(discord.Object(member.id), f"You have new {FlavorStrings.pokepass} quests available! Use {CMD_MINIGAMES.format('@Pokétwo')} to view them!"))
+
+    @notify_quests.before_loop
+    async def before_notify_loop(self):
+        await self.bot.wait_until_ready()
+
     ## Utils
 
-    async def fetch_quests(self, member: Union[discord.User, discord.Member]) -> List[Dict[str, Any]]:
-        member_info = await self.bot.mongo.fetch_member_info(member)
-
-        quests = [q for q in member_info[QUESTS_ID] if datetime.now() < q["expires"]]
+    async def renew_quests(self, member: Member):
+        quests = [q for q in member[QUESTS_ID] if datetime.now() < q["expires"]]
 
         daily_quests = [q for q in quests if q["type"] == "daily"]
         weekly_quests = [q for q in quests if q["type"] == "weekly"]
@@ -826,6 +854,11 @@ class Christmas(commands.Cog):
             await self.bot.mongo.update_member(member, {"$set": {QUESTS_ID: quests}})
 
         return quests
+
+    async def fetch_quests(self, user: Union[discord.User, discord.Member]) -> List[Dict[str, Any]]:
+        member = await self.bot.mongo.fetch_member_info(user)
+
+        return await self.renew_quests(member)
 
     async def check_quests(self, user: Union[discord.User, discord.Member]):
         """Function to check for quest completions."""
