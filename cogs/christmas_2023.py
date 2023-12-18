@@ -833,7 +833,7 @@ class Christmas(commands.Cog):
             await asyncio.create_task(
                 self.bot.send_dm(
                     discord.Object(member.id),
-                    f"You have new {FlavorStrings.pokepass} quests available! Use {CMD_MINIGAMES.format('@Pokétwo')} to view them!",
+                    f"You have new {FlavorStrings.pokepass} minigames available! Use {CMD_MINIGAMES.format('@Pokétwo')} to view them!",
                 )
             )
 
@@ -905,7 +905,7 @@ class Christmas(commands.Cog):
                 inc_xp = QUEST_REWARDS[q["type"]]
                 with contextlib.suppress(discord.HTTPException):
                     await user.send(
-                        f"You completed the {FlavorStrings.pokepass} quest **{get_quest_description(q)}**! You received **{inc_xp}XP**!"
+                        f"You completed the {FlavorStrings.pokepass} minigame **{get_quest_description(q)}**! You received **{inc_xp}XP**!"
                     )
                     await self.give_xp(user, inc_xp)
 
