@@ -625,7 +625,7 @@ class Christmas(commands.Cog):
         """Function to level a user up and DM the message along with rewards earned."""
 
         embed = self.bot.Embed(
-            title=f"Congratulations, you've leveled up to {FlavorStrings.pokepass} level {level}!",
+            title=f"Congratulations, you leveled up to {FlavorStrings.pokepass} level {level}!",
             description=f"",
         )
 
