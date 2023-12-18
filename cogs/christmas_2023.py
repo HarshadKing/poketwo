@@ -638,7 +638,8 @@ class Christmas(commands.Cog):
         if new_level > member_level:
             update["$inc"][LEVEL_ID] = new_level - member_level
 
-        await self.bot.mongo.update_member(user, update)
+        await self.bot.mongo.db.member.find_one_and_update({"_id": member.id}, update)
+        await self.bot.redis.hdel(f"db:member", int(member.id))
 
         # Send the DMs after updating
         if new_level > member_level:
