@@ -813,7 +813,9 @@ class Christmas(commands.Cog):
         notify = member.christmas_2023_quests_notify
 
         await self.bot.mongo.update_member(ctx.author, {"$set": {QUESTS_NOTIFY_ID: not notify}})
-        await ctx.reply(f"Turned {'off' if notify else 'on'} notifications for when {FlavorStrings.pokepass} minigames reset!")
+        await ctx.reply(
+            f"Turned {'off' if notify else 'on'} notifications for when {FlavorStrings.pokepass} minigames reset!"
+        )
 
     @commands.is_owner()
     @christmas.command()
