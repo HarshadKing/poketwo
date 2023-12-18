@@ -804,6 +804,7 @@ class Christmas(commands.Cog):
 
         await ctx.reply(embed=embed, mention_author=False)
 
+    @checks.has_started()
     @minigames.command(name="togglenotification", aliases=("toggle",))
     async def toggle_notification(self, ctx: PoketwoContext):
         """Toggle the minigames reset notifications."""
