@@ -626,7 +626,7 @@ class Christmas(commands.Cog):
         """Function to level a user up and DM the message along with rewards earned."""
 
         embed = self.bot.Embed(
-            title=f"Congratulations, You are now level {level}!",
+            title=f"Congratulations, you've leveled up to {FlavorStrings.pokepass} level {level}!",
             description=f"",
         )
 
@@ -695,7 +695,7 @@ class Christmas(commands.Cog):
 
         if presents < qty:
             return await ctx.send(
-                f"You don't have enough {FlavorStrings.present:sb}! {FlavorStrings.present:sb!e} are earned by completing {FlavorStrings.pokepass} levels after completing the {FlavorStrings.pokepass}."
+                f"You don't have enough {FlavorStrings.present:sb}! {FlavorStrings.present:sb!e} are earned for every new level after compeleting the {FlavorStrings.pokepass}."
             )
 
         # GO
