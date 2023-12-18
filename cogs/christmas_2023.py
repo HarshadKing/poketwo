@@ -583,7 +583,7 @@ class Christmas(commands.Cog):
     async def give_reward(self, user: discord.User | discord.Member, member: Member, level):
         """Function to give a user rewards from the Poképass according to their level"""
 
-        reward = PASS_REWARDS[level] if level < len(PASS_REWARDS) else {"reward": "present", "amount": 1}
+        reward = PASS_REWARDS[level] if level <= len(PASS_REWARDS) else {"reward": "present", "amount": 1}
         match reward["reward"]:
             case "pokecoins":
                 await self.bot.mongo.update_member(member, {"$inc": {"balance": reward["amount"]}})
