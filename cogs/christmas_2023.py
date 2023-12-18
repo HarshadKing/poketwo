@@ -32,7 +32,7 @@ if TYPE_CHECKING:
 CHRISTMAS_PREFIX = "christmas_2023_"
 BADGE_NAME = "christmas_2023"
 IV_REWARD = 75
-EMBED_COLOR = 0x418dd0
+EMBED_COLOR = 0x418DD0
 
 
 class FlavorStrings:
@@ -265,10 +265,10 @@ def make_quest(event: str, count_range: range, **condition):
 DAILY_QUESTS = {
     make_quest("catch", range(20, 31)): 15,  # Any catch quest
     make_quest("catch", range(10, 21), type=lambda: random.choice(TYPES)): 15,  # Type pokemon quests
-
-    make_quest("catch", range(10, 21), region=lambda: random.choice(REGIONS[:-1])): 9,  # Region pokemon quests except hisui
+    make_quest(
+        "catch", range(10, 21), region=lambda: random.choice(REGIONS[:-1])
+    ): 9,  # Region pokemon quests except hisui
     make_quest("catch", range(1, 3), region="hisui"): 1,  # Hisui region pokemon quest
-
     make_quest("catch", range(5, 11), rarity="event"): 10,  # Event pokemon quests
     make_quest("catch", range(10, 21), rarity="paradox"): 5,  # Paradox pokemon quests
     make_quest("market_buy", [500, 1000]): 5,  # Market Purchase quest
@@ -282,12 +282,14 @@ DAILY_QUESTS = {
 WEEKLY_QUESTS = {
     make_quest("catch", range(60, 71)): 15,  # Any catch quest
     make_quest("catch", range(40, 61), type=lambda: random.choice(TYPES)): 10,  # Type pokemon quests
-
     make_quest("catch", range(50, 61), region="paldea"): 0.5,  # Paldea region pokemon quest
-    make_quest("catch", range(40, 51), region=lambda: random.choice(("kanto", "johto", "hoenn", "unova"))): 2,  # Group 1 region pokemon quests
-    make_quest("catch", range(30, 41), region=lambda: random.choice(("sinnoh", "alola", "kalos", "galar"))): 2,  # Group 2 region pokemon quests
+    make_quest(
+        "catch", range(40, 51), region=lambda: random.choice(("kanto", "johto", "hoenn", "unova"))
+    ): 2,  # Group 1 region pokemon quests
+    make_quest(
+        "catch", range(30, 41), region=lambda: random.choice(("sinnoh", "alola", "kalos", "galar"))
+    ): 2,  # Group 2 region pokemon quests
     make_quest("catch", range(5, 11), region="hisui"): 0.5,  # Hisui region pokemon quest
-
     make_quest("catch", range(1, 4), rarity=lambda: random.choice(RARITIES)): 15,  # Rare pokemon quests
     make_quest("catch", range(1, 4), form=lambda: random.choice(FORMS)): 10,  # Regional form pokemon quests
     make_quest("catch", range(15, 26), rarity="event"): 5,  # Event pokemon quests
@@ -303,6 +305,7 @@ WEEKLY_QUESTS = {
 # MAIN
 
 ## Main Menu View for quick access to commands
+
 
 class ChristmasView(discord.ui.View):
     def __init__(self, ctx: PoketwoContext):
@@ -336,7 +339,9 @@ class ChristmasView(discord.ui.View):
                 child.disabled = True
             await self.message.edit(view=self)
 
+
 ## Main Cog
+
 
 class Christmas(commands.Cog):
     """Christmas event commands."""
@@ -453,7 +458,7 @@ class Christmas(commands.Cog):
                 All aboard {FlavorStrings.pokeexpress}, where adventure awaits and joyous cheer fills the air! As the frosty winds whistle through the forests and hills, cozy up inside {FlavorStrings.pokeexpress} with different Pokémon for the most magical journey of all—to the North Pole to see Santa!
                 **Progress the journey by playing various minigames and completing {FlavorStrings.pokepass} levels, collecting gifts and rewards along the way!**
                 """
-            )
+            ),
         )
 
         ## POKÉPASS VALUES
@@ -462,7 +467,9 @@ class Christmas(commands.Cog):
         requirement = self.get_xp_requirement(member[LEVEL_ID])
 
         embed.add_field(name=f"Your {FlavorStrings.pokepass} Level:", value=f"{member[LEVEL_ID]}", inline=False)
-        embed.add_field(name=f"Your {FlavorStrings.pokepass} XP:", value=f"{member[XP_ID]} / {requirement}", inline=False)
+        embed.add_field(
+            name=f"Your {FlavorStrings.pokepass} XP:", value=f"{member[XP_ID]} / {requirement}", inline=False
+        )
 
         next_level = member[LEVEL_ID] + 1
         if next_level > len(PASS_REWARDS):
@@ -623,18 +630,12 @@ class Christmas(commands.Cog):
             description=f"",
         )
 
-        embed.add_field(
-            name="Your rewards:", value=await self.give_reward(user, member, level)
-        )
+        embed.add_field(name="Your rewards:", value=await self.give_reward(user, member, level))
 
         await self.bot.send_dm(user, embed=embed)
 
     def get_xp_requirement(self, level: int):
-        return (
-            XP_REQUIREMENT["base"]
-            if level < len(PASS_REWARDS)
-            else XP_REQUIREMENT["extra"]
-        )
+        return XP_REQUIREMENT["base"] if level < len(PASS_REWARDS) else XP_REQUIREMENT["extra"]
 
     async def give_xp(self, user: discord.User, amount):
         """Function to give xp to a user and level up if requirements met."""
@@ -794,7 +795,9 @@ class Christmas(commands.Cog):
             ts = f"<t:{int(expires.timestamp())}:{{0}}>"
             embed.add_field(
                 name=f"{q['type'].capitalize()} Minigames — {QUEST_REWARDS[q['type']]}XP each",
-                value="\n".join([f"Resets in **{humanfriendly.format_timespan(round(timespan.total_seconds()))}**", *value]),
+                value="\n".join(
+                    [f"Resets in **{humanfriendly.format_timespan(round(timespan.total_seconds()))}**", *value]
+                ),
                 inline=False,
             )
 
@@ -824,19 +827,16 @@ class Christmas(commands.Cog):
 
     @tasks.loop(seconds=20)
     async def notify_quests(self):
-        quests = self.bot.mongo.Member.find(
-            {
-                QUESTS_ID: {
-                    "$elemMatch": {
-                        "expires": {"$lt": datetime.now()}
-                    }
-                }
-            }
-        )
+        quests = self.bot.mongo.Member.find({QUESTS_ID: {"$elemMatch": {"expires": {"$lt": datetime.now()}}}})
 
         async for member in quests:
             await asyncio.create_task(self.renew_quests(member))
-            await asyncio.create_task(self.bot.send_dm(discord.Object(member.id), f"You have new {FlavorStrings.pokepass} quests available! Use {CMD_MINIGAMES.format('@Pokétwo')} to view them!"))
+            await asyncio.create_task(
+                self.bot.send_dm(
+                    discord.Object(member.id),
+                    f"You have new {FlavorStrings.pokepass} quests available! Use {CMD_MINIGAMES.format('@Pokétwo')} to view them!",
+                )
+            )
 
     @notify_quests.before_loop
     async def before_notify_loop(self):
