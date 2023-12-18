@@ -156,8 +156,8 @@ PRESENTS_ID = f"{CHRISTMAS_PREFIX}presents"
 # TODO: FINALIZE CHANCES
 PRESENT_CHANCES = {
     "pokecoins": 0.25,
-    "shards": 0.05,
-    "redeems": 0.05,
+    "shards": 0.095,
+    "redeems": 0.005,
     "event_pokemon": 0.48,
     "rarity_pokemon": 0.12,
     "iv_pokemon": 0.05,
@@ -165,7 +165,7 @@ PRESENT_CHANCES = {
 PRESENT_REWARD_AMOUNTS = {
     "pokecoins": range(2000, 4000),
     "shards": range(10, 40),
-    "redeems": range(1, 3),
+    "redeems": [1],
     "event_pokemon": [1],
     "rarity_pokemon": [1],
     "iv_pokemon": [1],
