@@ -292,8 +292,43 @@ WEEKLY_QUESTS = {
 }
 
 
-# MAIN COG
+# MAIN
 
+## Main Menu View for quick access to commands
+
+class ChristmasView(discord.ui.View):
+    def __init__(self, ctx: PoketwoContext):
+        self.ctx = ctx
+        self.cog: Christmas = self.ctx.bot.get_cog("Christmas")
+        super().__init__(timeout=120)
+
+    @discord.ui.button(label="Minigames", style=discord.ButtonStyle.blurple)
+    async def inventory(self, interaction: discord.Interaction, button: discord.Button):
+        await interaction.response.defer()
+        await self.ctx.invoke(self.cog.minigames)
+
+    @discord.ui.button(label="All Rewards", style=discord.ButtonStyle.green)
+    async def milestones(self, interaction: discord.Interaction, button: discord.Button):
+        await interaction.response.defer()
+        await self.ctx.invoke(self.cog.rewards)
+
+    async def interaction_check(self, interaction):
+        if interaction.user.id not in {
+            self.ctx.bot.owner_id,
+            self.ctx.author.id,
+            *self.ctx.bot.owner_ids,
+        }:
+            await interaction.response.send_message("You can't use this!", ephemeral=True)
+            return False
+        return True
+
+    async def on_timeout(self):
+        if self.message:
+            for child in self.children:
+                child.disabled = True
+            await self.message.edit(view=self)
+
+## Main Cog
 
 class Christmas(commands.Cog):
     """Christmas event commands."""
@@ -425,7 +460,8 @@ class Christmas(commands.Cog):
             inline=False,
         )
 
-        await ctx.send(embed=embed)
+        view = ChristmasView(ctx)
+        view.message = await ctx.reply(embed=embed, view=view)
 
     @checks.has_started()
     @christmas.command(
@@ -711,7 +747,6 @@ class Christmas(commands.Cog):
             for q in quests:
                 description = get_quest_description(q)
 
-                # TODO: Experimental
                 # Underline the description to represent a progress bar
                 dl = list(f"\u200b{description}")
                 dl.insert(0, "__")
