@@ -67,7 +67,7 @@ TYPES = [
     "Dark",
     "Fairy",
 ]
-REGIONS = ("kanto", "johto", "hoenn", "sinnoh", "unova", "kalos", "alola", "galar")
+REGIONS = ("kanto", "johto", "hoenn", "sinnoh", "unova", "kalos", "alola", "galar", "paldea", "hisui")
 RARITIES = ("mythical", "legendary", "ub")
 FORMS = ("alolan", "galarian", "hisuian")
 
@@ -257,7 +257,10 @@ def make_quest(event: str, count_range: range, **condition):
 DAILY_QUESTS = {
     make_quest("catch", range(20, 31)): 15,  # Any catch quest
     make_quest("catch", range(10, 21), type=lambda: random.choice(TYPES)): 15,  # Type pokemon quests
-    make_quest("catch", range(10, 21), region=lambda: random.choice(REGIONS)): 10,  # Region pokemon quests
+
+    make_quest("catch", range(10, 21), region=lambda: random.choice(REGIONS[:-1])): 9,  # Region pokemon quests except hisui
+    make_quest("catch", range(1, 3), region="hisui"): 1,  # Hisui region pokemon quest
+
     make_quest("catch", range(5, 11), rarity="event"): 10,  # Event pokemon quests
     make_quest("catch", range(10, 21), rarity="paradox"): 5,  # Paradox pokemon quests
     make_quest("market_buy", [500, 1000]): 5,  # Market Purchase quest
@@ -271,7 +274,12 @@ DAILY_QUESTS = {
 WEEKLY_QUESTS = {
     make_quest("catch", range(60, 71)): 15,  # Any catch quest
     make_quest("catch", range(40, 61), type=lambda: random.choice(TYPES)): 10,  # Type pokemon quests
-    make_quest("catch", range(40, 51), region=lambda: random.choice(REGIONS)): 5,  # Region pokemon quests
+
+    make_quest("catch", range(50, 61), region="paldea"): 0.5,  # Paldea region pokemon quest
+    make_quest("catch", range(40, 51), region=lambda: random.choice(("kanto", "johto", "hoenn", "unova"))): 2,  # Group 1 region pokemon quests
+    make_quest("catch", range(30, 41), region=lambda: random.choice(("sinnoh", "alola", "kalos", "galar"))): 2,  # Group 2 region pokemon quests
+    make_quest("catch", range(5, 11), region="hisui"): 0.5,  # Hisui region pokemon quest
+
     make_quest("catch", range(1, 4), rarity=lambda: random.choice(RARITIES)): 15,  # Rare pokemon quests
     make_quest("catch", range(1, 4), form=lambda: random.choice(FORMS)): 10,  # Regional form pokemon quests
     make_quest("catch", range(15, 26), rarity="event"): 5,  # Event pokemon quests
