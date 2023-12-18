@@ -657,7 +657,7 @@ class Christmas(commands.Cog):
     ## Commands
 
     @checks.has_started()
-    @christmas.command()
+    @christmas.command(aliases=("o",))
     async def open(self, ctx: PoketwoContext, qty: Optional[int] = 1):
         """Command to open presents. Max qty at a time is 15."""
 
