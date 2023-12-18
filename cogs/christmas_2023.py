@@ -82,6 +82,7 @@ FORMS = ("alolan", "galarian", "hisuian")
 CMD_CHRISTMAS = "`{0} christmas`"
 CMD_REWARDS = "`{0} christmas rewards`"
 CMD_MINIGAMES = "`{0} christmas minigames`"
+CMD_TOGGLE_NOTIFICATIONS = "`{0} christmas minigames toggle`"
 CMD_OPEN = "`{0} christmas open [qty=1]`"
 
 
@@ -198,6 +199,7 @@ PRESENT_WEIGHTS = [*PRESENT_CHANCES.values()]
 # QUESTS
 
 QUESTS_ID = f"{CHRISTMAS_PREFIX}quests"
+QUESTS_NOTIFY_ID = f"{CHRISTMAS_PREFIX}quests_notify"
 
 QUEST_REWARDS = {"daily": 1100, "weekly": 2800, "catch": 1}
 
@@ -757,7 +759,7 @@ class Christmas(commands.Cog):
     ## Commands
 
     @checks.has_started()
-    @christmas.command(aliases=["mg", "games", "q", "quests"])
+    @christmas.group(aliases=["mg", "games", "q", "quests"], invoke_without_command=True)
     async def minigames(self, ctx: commands.Context):
         """View Poképass minigames/quests."""
 
@@ -802,6 +804,16 @@ class Christmas(commands.Cog):
 
         await ctx.reply(embed=embed, mention_author=False)
 
+    @minigames.command(name="togglenotification", aliases=("toggle",))
+    async def toggle_notification(self, ctx: PoketwoContext):
+        """Toggle the minigames reset notifications."""
+
+        member = await self.bot.mongo.fetch_member_info(ctx.author)
+        notify = member.christmas_2023_quests_notify
+
+        await self.bot.mongo.update_member(ctx.author, {"$set": {QUESTS_NOTIFY_ID: not notify}})
+        await ctx.reply(f"Turned {'off' if notify else 'on'} notifications for when {FlavorStrings.pokepass} minigames reset!")
+
     @commands.is_owner()
     @christmas.command()
     async def setprogress(self, ctx: PoketwoContext, index: int, progress: int):
@@ -830,12 +842,13 @@ class Christmas(commands.Cog):
 
         async for member in quests:
             await asyncio.create_task(self.renew_quests(member))
-            await asyncio.create_task(
-                self.bot.send_dm(
-                    discord.Object(member.id),
-                    f"You have new {FlavorStrings.pokepass} minigames available! Use {CMD_MINIGAMES.format('@Pokétwo')} to view them!",
+            if member.christmas_2023_quests_notify is not False:
+                await asyncio.create_task(
+                    self.bot.send_dm(
+                        discord.Object(member.id),
+                        f"You have new {FlavorStrings.pokepass} minigames available! Use {CMD_MINIGAMES.format('@Pokétwo')} to view them! You can disable this notification using {CMD_TOGGLE_NOTIFICATIONS.format('@Pokétwo')}.",
+                    )
                 )
-            )
 
     @notify_quests.before_loop
     async def before_notify_loop(self):
