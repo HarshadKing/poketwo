@@ -7,11 +7,13 @@ import contextlib
 from datetime import datetime, timedelta
 import itertools
 import random
+import textwrap
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 import uuid
 
 import discord
 from discord.ext import commands, tasks
+import humanfriendly
 
 from cogs import mongo
 from cogs.mongo import Member, PokemonBase
@@ -29,13 +31,16 @@ if TYPE_CHECKING:
 
 CHRISTMAS_PREFIX = "christmas_2023_"
 BADGE_NAME = "christmas_2023"
-IV_REWARD = 80
+IV_REWARD = 75
+EMBED_COLOR = 0x418dd0
 
 
 class FlavorStrings:
     """Holds various flavor strings."""
 
+    pokeexpress = FlavorString("The Poké Express")
     pokepass = FlavorString("Poképass")
+
     pokecoins = FlavorString("Pokécoins", "<:pokecoins:1185296751012356126>")
     event_pokemon = FlavorString("Event Pokémon")
     shards = FlavorString("Shards", "<:shards:1185296789918728263>")
@@ -75,6 +80,7 @@ FORMS = ("alolan", "galarian", "hisuian")
 
 ## COMMAND STRINGS
 CMD_CHRISTMAS = "`{0} christmas`"
+CMD_REWARDS = "`{0} christmas rewards`"
 CMD_MINIGAMES = "`{0} christmas minigames`"
 CMD_OPEN = "`{0} christmas open [qty=1]`"
 
@@ -342,7 +348,11 @@ class Christmas(commands.Cog):
 
     # GENERAL
 
+    async def cog_load(self):
+        self.bot.Embed.CUSTOM_COLOR = EMBED_COLOR  # Set custom embed color for this event
+
     async def cog_unload(self):
+        self.bot.Embed.CUSTOM_COLOR = None  # Unset custom embed color
         if self.bot.cluster_idx == 0:
             self.notify_quests.cancel()
 
@@ -435,15 +445,24 @@ class Christmas(commands.Cog):
     async def christmas(self, ctx: PoketwoContext):
         """Christmas event main menu. Contains Poképass details and presents inventory."""
 
-        embed = self.bot.Embed(title=f"Christmas 2023 - The Poké Express", description="")  # TODO: Description
+        prefix = ctx.clean_prefix.strip()
+        embed = self.bot.Embed(
+            title=f"All Aboard {FlavorStrings.pokeexpress}!",
+            description=textwrap.dedent(
+                f"""
+                All aboard {FlavorStrings.pokeexpress}, where adventure awaits and joyous cheer fills the air! As the frosty winds whistle through the forests and hills, cozy up inside {FlavorStrings.pokeexpress} with different Pokémon for the most magical journey of all—to the North Pole to see Santa!
+                **Progress the journey by playing various minigames and completing {FlavorStrings.pokepass} levels, collecting gifts and rewards along the way!**
+                """
+            )
+        )
 
         ## POKÉPASS VALUES
         member = await self.bot.mongo.fetch_member_info(ctx.author)
 
         requirement = self.get_xp_requirement(member[LEVEL_ID])
 
-        embed.add_field(name="Your Level:", value=f"{member[LEVEL_ID]}", inline=False)
-        embed.add_field(name="Your XP:", value=f"{member[XP_ID]} / {requirement}", inline=False)
+        embed.add_field(name=f"Your {FlavorStrings.pokepass} Level:", value=f"{member[LEVEL_ID]}", inline=False)
+        embed.add_field(name=f"Your {FlavorStrings.pokepass} XP:", value=f"{member[XP_ID]} / {requirement}", inline=False)
 
         next_level = member[LEVEL_ID] + 1
         if next_level > len(PASS_REWARDS):
@@ -452,18 +471,19 @@ class Christmas(commands.Cog):
             next_reward = await self.make_reward_text(reward=PASS_REWARDS[next_level])
 
         embed.add_field(
-            name=f"Next Reward",
+            name=f"Next {FlavorStrings.pokepass} Reward",
             value=f"{next_reward}",
             inline=False,
         )
 
-        prefix = ctx.clean_prefix.strip()
         embed.add_field(
             name=f"{FlavorStrings.present:s} — {member[PRESENTS_ID]:,}",
             value=(
-                f"> {CMD_OPEN.format(prefix)}\n"
-                f"You will earn a present for every {FlavorStrings.pokepass} level you complete after completing the {FlavorStrings.pokepass}!"
-                f" These presents hold the various rewards that were available in the main levels of the {FlavorStrings.pokepass}."
+                f"Once you've completed the {FlavorStrings.pokepass}, you will receive a present from Santa for every new level you complete! "
+                f"These presents can contain any of the different rewards you've received throughout the main levels of the {FlavorStrings.pokepass}.\n"
+                f"Use {CMD_OPEN.format(prefix)} to open them!"
+                # f"You will earn a present for every {FlavorStrings.pokepass} level you complete after completing the {FlavorStrings.pokepass}!"
+                # f" These presents hold the various rewards that were available in the main levels of the {FlavorStrings.pokepass}."
             ),
             inline=False,
         )
@@ -495,6 +515,7 @@ class Christmas(commands.Cog):
 
             embed = self.bot.Embed(title=f"Poképass Rewards", description=description)
             embed.set_footer(text=f"Showing {pgstart + 1}–{pgend} out of {len(PASS_REWARDS)}.")
+            embed.set_author(name=str(ctx.author), icon_url=ctx.author.display_avatar.url)
             return embed
 
         pages = pagination.ContinuablePages(pagination.FunctionPageSource(5, get_page))
@@ -683,7 +704,7 @@ class Christmas(commands.Cog):
             title=f"You open {qty} {FlavorStrings.present:{'s' if qty > 1 else ''}}...",
             description=None,
         )
-        embed.set_author(icon_url=ctx.author.display_avatar.url, name=str(ctx.author))
+        embed.set_author(name=str(ctx.author), icon_url=ctx.author.display_avatar.url)
 
         update = {"$inc": {"balance": 0, "premium_balance": 0, "redeems": 0}}
         inserts = []
@@ -736,14 +757,19 @@ class Christmas(commands.Cog):
     ## Commands
 
     @checks.has_started()
-    @christmas.command(aliases=["q"])
-    async def quests(self, ctx: commands.Context):
-        """View Poképass quests."""
+    @christmas.command(aliases=["mg", "games", "q", "quests"])
+    async def minigames(self, ctx: commands.Context):
+        """View Poképass minigames/quests."""
 
         embed = self.bot.Embed(
-            title=f"{FlavorStrings.pokepass} Quests",
-            description=f"Complete these quests to earn {FlavorStrings.pokepass} XP!",
+            title=f"{FlavorStrings.pokepass} Minigames",
+            description=(
+                f"Play a diverse selection of minigames and earn XP to level up your {FlavorStrings.pokepass}! "
+                f"Traverse {FlavorStrings.pokeexpress}, play a variety of minigames, and collect various rewards along the way!\n\n"
+                f"Additionally, you'll earn **{QUEST_REWARDS['catch']}XP** for every pokémon you catch!"
+            ),
         )
+        embed.set_author(name=str(ctx.author), icon_url=ctx.author.display_avatar.url)
 
         all_quests = await self.fetch_quests(ctx.author)
 
@@ -764,14 +790,15 @@ class Christmas(commands.Cog):
                 value.append(f"{'`☑`' if q.get('completed') else '`☐`'} {''.join(dl)} `{q['progress']}/{q['count']}`")
                 expires = q["expires"]
 
+            timespan = expires - datetime.now()
             ts = f"<t:{int(expires.timestamp())}:{{0}}>"
             embed.add_field(
-                name=q["type"].capitalize(),
-                value="\n".join([f"Resets {ts.format('R')}"] + value),
+                name=f"{q['type'].capitalize()} Minigames — {QUEST_REWARDS[q['type']]}XP each",
+                value="\n".join([f"Resets in **{humanfriendly.format_timespan(round(timespan.total_seconds()))}**", *value]),
                 inline=False,
             )
 
-        await ctx.send(embed=embed)
+        await ctx.reply(embed=embed, mention_author=False)
 
     @commands.is_owner()
     @christmas.command()
