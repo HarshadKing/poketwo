@@ -456,7 +456,7 @@ class Christmas(commands.Cog):
             title=f"All Aboard {FlavorStrings.pokeexpress}!",
             description=textwrap.dedent(
                 f"""
-                All aboard {FlavorStrings.pokeexpress}, where adventure awaits and joyous cheer fills the air! As the frosty winds whistle through the forests and hills, cozy up inside {FlavorStrings.pokeexpress} with different Pokémon for the most magical journey of all—to the North Pole to see Santa!
+                All aboard {FlavorStrings.pokeexpress}, where adventure awaits and joyous cheer fills the air! As the frosty winds whistle through the forests and hills, cosy up inside {FlavorStrings.pokeexpress} with different Pokémon for the most magical journey of all—to the North Pole to see Santa!
                 **Progress the journey by playing various minigames and completing {FlavorStrings.pokepass} levels, collecting gifts and rewards along the way!**
                 """
             ),
