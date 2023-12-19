@@ -167,8 +167,8 @@ PRESENT_CHANCES = {
     "shards": 0.095,
     "redeems": 0.005,
     "event_pokemon": 0.48,
-    "rarity_pokemon": 0.12,
-    "iv_pokemon": 0.05,
+    "rarity_pokemon": 0.085,
+    "iv_pokemon": 0.085,
 }
 PRESENT_REWARD_AMOUNTS = {
     "pokecoins": range(2000, 4000),
@@ -276,7 +276,7 @@ DAILY_QUESTS = {
     make_quest("market_sell", [500, 1000]): 10,  # Market Sale quest
     make_quest("open_box", range(1, 2)): 10,  # Voting box quest
     make_quest("trade", range(3, 6)): 5,  # Trading quest
-    make_quest("battle_start", range(3, 6), type=lambda: random.choice(TYPES)): 10,  # Battling with certain types quest
+    make_quest("battle_start", range(1, 4), type=lambda: random.choice(TYPES)): 10,  # Battling with certain types quest
     make_quest("release", range(5, 11)): 5,  # Releasing quest
 }
 
@@ -298,7 +298,7 @@ WEEKLY_QUESTS = {
     make_quest("market_sell", [4000, 5000, 5500]): 10,  # Market Sale quest
     make_quest("open_box", range(4, 7)): 15,  # Voting box quest
     make_quest(
-        "battle_start", range(10, 16), type=lambda: random.choice(TYPES)
+        "battle_start", range(6, 11), type=lambda: random.choice(TYPES)
     ): 10,  # Battling with certain types quest
 }
 
@@ -422,7 +422,7 @@ class Christmas(commands.Cog):
             case "event_pokemon":
                 population = self.pools["event_pokemon"]
                 weights = EVENT_CHANCES
-                shiny_boost = 5
+                shiny_boost = 10
             case "rarity_pokemon" | "ub" | "legendary" | "mythical":
                 pool = [x for x in self.pools[reward] if x.catchable]
                 population = pool
