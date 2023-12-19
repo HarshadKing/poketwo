@@ -818,7 +818,7 @@ class Christmas(commands.Cog):
         )
 
     @commands.is_owner()
-    @christmas.command()
+    @minigames.command()
     async def setprogress(self, ctx: PoketwoContext, index: int, progress: int):
         """Admin-only debugging command to set progress of a quest."""
 
@@ -954,7 +954,7 @@ class Christmas(commands.Cog):
             ) and not q.get("completed"):
                 await self.bot.mongo.db.member.update_one(
                     {"_id": user.id, f"{QUESTS_ID}._id": q["_id"]},
-                    {"$inc": {f"{QUESTS_ID}.$.progress": count if count + q["progress"] <= q["count"] else q["count"]}},
+                    {"$inc": {f"{QUESTS_ID}.$.progress": min(count, q["count"] - q["progress"])}},
                 )
 
         await self.bot.redis.hdel("db:member", user.id)
