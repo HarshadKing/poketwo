@@ -633,7 +633,7 @@ class Christmas(commands.Cog):
 
         embed.add_field(name="Your rewards:", value=await self.give_reward(user, member, level))
 
-        await self.bot.send_dm(user, embed=embed)
+        return embed
 
     def get_xp_requirement(self, level: int):
         return XP_REQUIREMENT["base"] if level < len(PASS_REWARDS) else XP_REQUIREMENT["extra"]
@@ -664,10 +664,14 @@ class Christmas(commands.Cog):
         await self.bot.mongo.db.member.find_one_and_update({"_id": member.id}, update)
         await self.bot.redis.hdel(f"db:member", int(member.id))
 
-        # Send the DMs after updating
+        # Give the rewards and send DMs in chunks, after updating level and XP
         if new_level > member_level:
-            for l in range(member_level + 1, new_level + 1):
-                await self.reward_level_up(user, member, l)
+            for chunk in discord.utils.as_chunks(range(member_level + 1, new_level + 1), 6):
+                embeds = []
+                for l in chunk:
+                    embeds.append(await self.reward_level_up(user, member, l))
+
+                await self.bot.send_dm(user, embeds=embeds)
 
     ## Event handlers
 
