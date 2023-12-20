@@ -21,7 +21,7 @@ from data.models import Species
 from helpers import checks, pagination
 from helpers.context import PoketwoContext
 from helpers.converters import FetchUserConverter
-from helpers.utils import FlavorString
+from helpers.utils import FlavorString, unwind
 from lib.probability import random_iv_composition
 
 if TYPE_CHECKING:
@@ -162,7 +162,6 @@ XP_REQUIREMENT = {"base": 1000, "extra": 500}
 
 PRESENTS_ID = f"{CHRISTMAS_PREFIX}presents"
 
-# TODO: FINALIZE CHANCES
 PRESENT_CHANCES = {
     "pokecoins": 0.25,
     "shards": 0.095,
@@ -259,49 +258,56 @@ def make_quest(event: str, count_range: range, **condition):
 
     return lambda: {
         "event": event,
-        "count": random.choice(count_range),
-        "condition": {k: v() if callable(v) else v for k, v in condition.items()},
+        "condition": (c := {k: v() if callable(v) else v for k, v in condition.items()}),
+        "count": random.choice(count_range(c) if callable(count_range) else count_range),
     }
 
 
-DAILY_QUESTS = {
-    make_quest("catch", range(20, 31)): 15,  # Any catch quest
-    make_quest("catch", range(10, 21), type=lambda: random.choice(TYPES)): 15,  # Type pokemon quests
-    make_quest(
-        "catch", range(10, 21), region=lambda: random.choice(REGIONS[:-1])
-    ): 9,  # Region pokemon quests except hisui
-    make_quest("catch", range(1, 3), region="hisui"): 1,  # Hisui region pokemon quest
-    make_quest("catch", range(5, 11), rarity="event"): 10,  # Event pokemon quests
-    make_quest("catch", range(10, 21), rarity="paradox"): 5,  # Paradox pokemon quests
-    make_quest("market_buy", [500, 1000]): 5,  # Market Purchase quest
-    make_quest("market_sell", [500, 1000]): 10,  # Market Sale quest
-    make_quest("open_box", range(1, 2)): 10,  # Voting box quest
-    make_quest("trade", range(3, 6)): 5,  # Trading quest
-    make_quest("battle_start", range(1, 4), type=lambda: random.choice(TYPES)): 10,  # Battling with certain types quest
-    make_quest("release", range(5, 11)): 5,  # Releasing quest
+REGION_RANGES = {
+    "daily": unwind(
+        {
+            REGIONS[:-1]: range(10, 21),  # All regions except hisui
+            ("hisui",): range(1, 4)
+        }
+    ),
+    "weekly": unwind(
+        {
+            ("paldea",): range(100, 151),
+            ("kanto", "johto", "hoenn", "unova"): range(80, 101),
+            ("sinnoh", "alola", "kalos", "galar"): range(70, 91),
+            ("hisui",): range(5, 16)
+        }
+    ),
 }
 
-WEEKLY_QUESTS = {
-    make_quest("catch", range(60, 71)): 15,  # Any catch quest
-    make_quest("catch", range(40, 61), type=lambda: random.choice(TYPES)): 10,  # Type pokemon quests
-    make_quest("catch", range(50, 61), region="paldea"): 0.5,  # Paldea region pokemon quest
-    make_quest(
-        "catch", range(40, 51), region=lambda: random.choice(("kanto", "johto", "hoenn", "unova"))
-    ): 2,  # Group 1 region pokemon quests
-    make_quest(
-        "catch", range(30, 41), region=lambda: random.choice(("sinnoh", "alola", "kalos", "galar"))
-    ): 2,  # Group 2 region pokemon quests
-    make_quest("catch", range(5, 11), region="hisui"): 0.5,  # Hisui region pokemon quest
-    make_quest("catch", range(1, 4), rarity=lambda: random.choice(RARITIES)): 15,  # Rare pokemon quests
-    make_quest("catch", range(1, 4), form=lambda: random.choice(FORMS)): 10,  # Regional form pokemon quests
-    make_quest("catch", range(15, 26), rarity="event"): 5,  # Event pokemon quests
-    make_quest("market_buy", [4000, 5000, 5500]): 10,  # Market Purchase quest
-    make_quest("market_sell", [4000, 5000, 5500]): 10,  # Market Sale quest
-    make_quest("open_box", range(4, 7)): 15,  # Voting box quest
+DAILY_QUESTS = [
+    make_quest("catch", range(20, 31)),  # Any catch quest
+    make_quest("catch", range(10, 21), type=lambda: random.choice(TYPES)),  # Type pokemon quests
+    make_quest("catch", lambda c: REGION_RANGES["daily"][c["region"]], region=lambda: random.choice(REGIONS)),  # Region pokemon quests
+    make_quest("catch", range(5, 11), rarity="event"),  # Event pokemon quests
+    make_quest("catch", range(10, 21), rarity="paradox"),  # Paradox pokemon quests
+    make_quest("market_buy", [500, 1000]),  # Market Purchase quest
+    make_quest("market_sell", [500, 1000]),  # Market Sale quest
+    make_quest("open_box", range(1, 2)),  # Voting box quest
+    make_quest("trade", range(3, 6)),  # Trading quest
+    make_quest("battle_start", range(1, 4), type=lambda: random.choice(TYPES)),  # Battling with certain types quest
+    make_quest("release", range(5, 11)),  # Releasing quest
+]
+
+WEEKLY_QUESTS = [
+    make_quest("catch", range(600, 751)),  # Any catch quest
+    make_quest("catch", range(100, 151), type=lambda: random.choice(TYPES)),  # Type pokemon quests
+    make_quest("catch", lambda c: REGION_RANGES["weekly"][c["region"]], region=lambda: random.choice(REGIONS)),  # Region pokemon quests
+    make_quest("catch", range(1, 4), rarity=lambda: random.choice(RARITIES)),  # Rare pokemon quests
+    make_quest("catch", range(1, 4), form=lambda: random.choice(FORMS)),  # Regional form pokemon quests
+    make_quest("catch", range(10, 16), rarity="event"),  # Event pokemon quests
+    make_quest("market_buy", [4000, 5000, 5500]),  # Market Purchase quest
+    make_quest("market_sell", [4000, 5000, 5500]),  # Market Sale quest
+    make_quest("open_box", range(4, 7)),  # Voting box quest
     make_quest(
         "battle_start", range(6, 11), type=lambda: random.choice(TYPES)
-    ): 10,  # Battling with certain types quest
-}
+    ),  # Battling with certain types quest
+]
 
 
 # MAIN
@@ -882,7 +888,7 @@ class Christmas(commands.Cog):
                         "type": "daily",
                         "expires": datetime.now() + timedelta(days=1),
                     }
-                    for q in random.choices(list(DAILY_QUESTS.keys()), list(DAILY_QUESTS.values()), k=5)
+                    for q in random.choices(DAILY_QUESTS, k=5)
                 ]
             )
 
@@ -896,7 +902,7 @@ class Christmas(commands.Cog):
                         "type": "weekly",
                         "expires": datetime.now() + timedelta(days=7),
                     }
-                    for q in random.choices(list(WEEKLY_QUESTS.keys()), list(WEEKLY_QUESTS.values()), k=5)
+                    for q in random.choices(WEEKLY_QUESTS, k=5)
                 ]
             )
 
