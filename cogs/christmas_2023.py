@@ -221,7 +221,7 @@ def get_quest_description(quest: dict):
                     description = f"Catch {count} {title} pokémon"
                 elif form := condition.get("form"):
                     title = form.title()
-                    description = f"Catch {count} {title} pokémon"
+                    description = f"Catch {count} {title} Form pokémon"
             else:
                 description = f"Catch {count} pokémon"
 
