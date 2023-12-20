@@ -151,7 +151,8 @@ PASS_REWARDS = {
     47: {"reward": "pokecoins", "amount": 5000},
     48: {"reward": "rarity_pokemon", "rarity": "legendary", "amount": 5},
     49: {"reward": "pokecoins", "amount": 5000},
-    50: {"reward": "event_pokemon", "id": EVENT_ARBOLIVA, "badge": True},
+    50: {"reward": "event_pokemon", "id": EVENT_ARBOLIVA},
+    51: {"reward": "badge"},
 }
 
 XP_REQUIREMENT = {"base": 1000, "extra": 500}
@@ -560,8 +561,8 @@ class Christmas(commands.Cog):
         elif reward["reward"] == "event_pokemon":
             species = self.bot.data.species_by_number(reward["id"])
             reward_text = f"{self.bot.sprites.get(species.dex_number)} {amount} {species}"
-            if "badge" in reward:
-                reward_text += f" & {FlavorStrings.badge}"
+        elif reward["reward"] == "badge":
+            reward_text = f"{FlavorStrings.badge}"
         else:
             flavor = getattr(FlavorStrings, reward["reward"])
             reward_text = f"{flavor.emoji} {amount} {flavor:!e}"
@@ -589,9 +590,11 @@ class Christmas(commands.Cog):
             case "pokecoins":
                 await self.bot.mongo.update_member(member, {"$inc": {"balance": reward["amount"]}})
                 return await self.make_reward_text(reward=reward)
+
             case "shards":
                 await self.bot.mongo.update_member(member, {"$inc": {"premium_balance": reward["amount"]}})
                 return await self.make_reward_text(reward=reward)
+
             case "event_pokemon" | "rarity_pokemon" | "iv_pokemon":
                 text = [await self.make_reward_text(reward)]
                 if reward.get("id"):
@@ -613,12 +616,12 @@ class Christmas(commands.Cog):
                     for pokemon in inserts:
                         pokemon_obj = self.bot.mongo.Pokemon.build_from_mongo(pokemon)
                         text.append(f"- {pokemon_obj:liP}")
-
-                if reward.get("badge"):
-                    await self.give_badge(member)
-                    text.append(f"- {FlavorStrings.badge}")
-
                 return "\n".join(text)
+
+            case "badge":
+                await self.give_badge(member)
+                return f"- {FlavorStrings.badge}"
+
             case "present":
                 await self.bot.mongo.update_member(member, {"$inc": {PRESENTS_ID: 1}})
                 return await self.make_reward_text(reward=reward)
