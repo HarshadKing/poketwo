@@ -9,6 +9,7 @@ import itertools
 import random
 import textwrap
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from urllib.parse import urljoin
 import uuid
 
 import discord
@@ -21,7 +22,7 @@ from data.models import Species
 from helpers import checks, pagination
 from helpers.context import PoketwoContext
 from helpers.converters import FetchUserConverter
-from helpers.utils import FlavorString, unwind
+from helpers.utils import FlavorString, unwind, write_fp
 from lib.probability import random_iv_composition
 
 if TYPE_CHECKING:
@@ -471,15 +472,17 @@ class Christmas(commands.Cog):
 
         ## POKÉPASS VALUES
         member = await self.bot.mongo.fetch_member_info(ctx.author)
+        level = member[LEVEL_ID]
+        xp = member[XP_ID]
 
-        requirement = self.get_xp_requirement(member[LEVEL_ID])
+        requirement = self.get_xp_requirement(level)
 
-        embed.add_field(name=f"Your {FlavorStrings.pokepass} Level:", value=f"{member[LEVEL_ID]}", inline=False)
+        embed.add_field(name=f"Your {FlavorStrings.pokepass} Level:", value=f"{level}", inline=False)
         embed.add_field(
-            name=f"Your {FlavorStrings.pokepass} XP:", value=f"{member[XP_ID]} / {requirement}", inline=False
+            name=f"Your {FlavorStrings.pokepass} XP:", value=f"{xp} / {requirement}", inline=False
         )
 
-        next_level = member[LEVEL_ID] + 1
+        next_level = level + 1
         if next_level > len(PASS_REWARDS):
             next_reward = f"{FlavorStrings.present.emoji} 1 {FlavorStrings.present:!e}"
         else:
@@ -503,8 +506,18 @@ class Christmas(commands.Cog):
             inline=False,
         )
 
+        # Main menu image showing Poképass progress
+        if hasattr(self.bot.config, "IMGEN_URL"):
+            progress = round(level + (xp / requirement), 3)
+            url = urljoin(self.bot.config.IMGEN_URL, f"events/christmas_2023/get_battle_pass_image/{progress}")
+            async with self.bot.http_session.get(url) as resp:
+                if resp.status == 200:
+                    arr = await self.bot.loop.run_in_executor(None, write_fp, await resp.read())
+                    image = discord.File(arr, filename="pokepass.png")
+                    embed.set_image(url="attachment://pokepass.png")
+
         view = ChristmasView(ctx)
-        view.message = await ctx.reply(embed=embed, view=view)
+        view.message = await ctx.reply(embed=embed, view=view, file=image)
 
     @checks.has_started()
     @christmas.command(
