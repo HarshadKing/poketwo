@@ -521,7 +521,7 @@ class Christmas(commands.Cog):
         total_count = len(PASS_REWARDS)
         max_padding = len(str(total_count))  # Max number of digits that appear in our pages, for padding
 
-        PER_PAGE = 10
+        PER_PAGE = 15
         async def get_page(source, menu, pidx):
             pgstart = pidx * PER_PAGE
             pgend = min(pgstart + PER_PAGE, total_count)
