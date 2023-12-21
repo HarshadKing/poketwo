@@ -518,22 +518,29 @@ class Christmas(commands.Cog):
         member = await self.bot.mongo.fetch_member_info(ctx.author)
         level = member[LEVEL_ID]
 
+        total_count = len(PASS_REWARDS)
+        max_padding = len(str(total_count))  # Max number of digits that appear in our pages, for padding
+
+        PER_PAGE = 10
         async def get_page(source, menu, pidx):
-            pgstart = pidx * 10
-            pgend = min(pgstart + 10, len(PASS_REWARDS))
+            pgstart = pidx * PER_PAGE
+            pgend = min(pgstart + PER_PAGE, total_count)
 
             # Send embed
             description = ""
             for reward in list(PASS_REWARDS.items())[pgstart:pgend]:
-                text = await self.make_reward_text(reward=reward[1], number=reward[0])
-                description += (text if reward[0] <= level else f"**{text}**") + "\n"
+                text = await self.make_reward_text(reward=reward[1])
+                level_text = f"{reward[0]:>{max_padding}}"
+                reward_text = text if reward[0] <= level else f'**{text}**'
+
+                description += f"`{level_text}`　{reward_text}" + "\n"
 
             embed = self.bot.Embed(title=f"Poképass Rewards", description=description)
-            embed.set_footer(text=f"Showing {pgstart + 1}–{pgend} out of {len(PASS_REWARDS)}.")
+            embed.set_footer(text=f"Showing {pgstart + 1}–{pgend} out of {total_count}.")
             embed.set_author(name=str(ctx.author), icon_url=ctx.author.display_avatar.url)
             return embed
 
-        pages = pagination.ContinuablePages(pagination.FunctionPageSource(5, get_page))
+        pages = pagination.ContinuablePages(pagination.FunctionPageSource(math.ceil(total_count / PER_PAGE), get_page))
         self.bot.menus[ctx.author.id] = pages
         await pages.start(ctx)
 
@@ -551,10 +558,9 @@ class Christmas(commands.Cog):
 
     ## Utils
 
-    async def make_reward_text(self, reward, number=None):
+    async def make_reward_text(self, reward):
         """Function to build the text for a Poképass reward."""
 
-        level_text = ""
         amount = reward.get("amount", 1)
         if reward["reward"] == "iv_pokemon":
             flavor = FlavorStrings.iv_pokemon
@@ -573,13 +579,7 @@ class Christmas(commands.Cog):
             flavor = getattr(FlavorStrings, reward["reward"])
             reward_text = f"{flavor.emoji} {amount} {flavor:!e}"
 
-        if number != None:
-            if number < 10:
-                level_text = f"` {number}:`"
-            else:
-                level_text = f"`{number}:`"
-
-        return f"{level_text}　{reward_text}"
+        return reward_text
 
     async def give_badge(self, member: Member):
         """Function to give a user the christmas badge."""
