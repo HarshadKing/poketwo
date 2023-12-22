@@ -532,11 +532,8 @@ class Christmas(commands.Cog):
         embed.add_field(
             name=f"{FlavorStrings.present:s} — {member[PRESENTS_ID]:,}",
             value=(
-                f"Once you've completed the {FlavorStrings.pokepass}, you will receive a present from Santa for every new level you complete! "
-                f"These presents can contain any of the different rewards you've received throughout the main levels of the {FlavorStrings.pokepass}.\n"
+                f"Once you've completed the {FlavorStrings.pokepass}, you will receive a randomized present from Santa for every new level you complete!\n"
                 f"Use {CMD_OPEN.format(prefix)} to open them!"
-                # f"You will earn a present for every {FlavorStrings.pokepass} level you complete after completing the {FlavorStrings.pokepass}!"
-                # f" These presents hold the various rewards that were available in the main levels of the {FlavorStrings.pokepass}."
             ),
             inline=False,
         )
