@@ -156,6 +156,41 @@ PASS_REWARDS = {
     51: {"reward": "badge"},
 }
 
+PRESENTS_WINDOW_ID = "presents"
+
+# Window ID corresponding to each kind of reward for the image generation
+WINDOW_MAPPINGS = {
+        "pokecoins": "coins",  # Pokécoins
+        "shards": "shards",  # Shards
+        "badge": "smoliv",  # Badge
+
+        # Event pokémon
+        "event_pokemon": PRESENTS_WINDOW_ID,  # Event pokémon default windwow
+        EVENT_SMOLLIV: "smoliv",  # Christmas Tree Smoliv
+        EVENT_DOLLIV: "dolliv",  # Christmas Tree Dolliv
+        EVENT_ARBOLIVA: "arboliva",  # Christmas Tree Arboliva
+
+        # Other pokémon
+        "iv_pokemon": PRESENTS_WINDOW_ID,
+        "rarity_pokemon": PRESENTS_WINDOW_ID
+}
+
+# The list of window IDs generated from the pass rewards
+imgen_windows = []
+for level in PASS_REWARDS.values():
+    # If the level contains a id/species_id entry and its corresponding window ID exists, use that
+    if (s_id := level.get("id")) and (s_window := WINDOW_MAPPINGS.get(s_id)):
+        window = s_window
+    # Else if the level's reward entry has a corresponding window ID, use that
+    elif (r_window := WINDOW_MAPPINGS.get(level["reward"])):
+        window = r_window
+    # Otherwise use the presents window ID, as a default
+    else:
+        window = PRESENTS_WINDOW_ID
+
+    imgen_windows.append(window)
+
+
 XP_REQUIREMENT = {"base": 1000, "extra": 500}
 
 
@@ -507,14 +542,22 @@ class Christmas(commands.Cog):
         )
 
         # Main menu image showing Poképass progress
+        image = None
         if hasattr(self.bot.config, "IMGEN_URL"):
             progress = round(level + (xp / requirement), 3)
-            url = urljoin(self.bot.config.IMGEN_URL, f"events/christmas_2023/get_battle_pass_image/{progress}")
-            async with self.bot.http_session.get(url) as resp:
+            url = urljoin(self.bot.config.IMGEN_URL, f"events/christmas_2023/get_battle_pass_image")
+            data = {
+                "progress": progress,
+                "windows": imgen_windows
+            }
+
+            async with self.bot.http_session.post(url, json=data) as resp:
                 if resp.status == 200:
                     arr = await self.bot.loop.run_in_executor(None, write_fp, await resp.read())
                     image = discord.File(arr, filename="pokepass.png")
                     embed.set_image(url="attachment://pokepass.png")
+                else:
+                    ctx.log.exception("imgen.error", status_code=resp.status, reason=resp.reason)
 
         view = ChristmasView(ctx)
         view.message = await ctx.reply(embed=embed, view=view, file=image)
