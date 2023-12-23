@@ -49,6 +49,7 @@ CONCURRENCY_LIMITED_COMMANDS = {
     "pride",
     "summer",
     "expedition"
+    "christmas"
 }
 
 
@@ -68,8 +69,11 @@ class ClusterBot(commands.AutoShardedBot):
             super().__init__(**kwargs, color=color)
 
     class Embed(discord.Embed):
+        DEFAULT_COLOR = helpers.constants.PINK  # Default embed color, used if custom color is missing
+        CUSTOM_COLOR = None  # Custom embed color, easily changable in an event cog
+
         def __init__(self, **kwargs):
-            color = kwargs.pop("color", helpers.constants.PINK)
+            color = kwargs.pop("color", self.CUSTOM_COLOR or self.DEFAULT_COLOR)
             super().__init__(**kwargs, color=color)
 
     def __init__(self, **kwargs):

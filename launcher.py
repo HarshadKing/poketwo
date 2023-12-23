@@ -22,6 +22,7 @@ Config = namedtuple(
         "SERVER_URL",
         "EXT_SERVER_URL",
         "ASSETS_BASE_URL",
+        "IMGEN_URL",
     ],
 )
 
@@ -94,6 +95,7 @@ if __name__ == "__main__":
         SERVER_URL=os.environ["SERVER_URL"],
         EXT_SERVER_URL=os.getenv("EXT_SERVER_URL", os.environ["SERVER_URL"]),
         ASSETS_BASE_URL=os.getenv("ASSETS_BASE_URL"),
+        IMGEN_URL=os.getenv("IMGEN_URL"),
     )
 
     num_shards = int(os.getenv("NUM_SHARDS", 1))
