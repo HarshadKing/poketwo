@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 import itertools
 import random
 import textwrap
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 from urllib.parse import urljoin
 import uuid
 
@@ -100,7 +100,6 @@ EVENT_COSMOG = 50150
 # POKEPASS
 
 XP_ID = f"{CHRISTMAS_PREFIX}xp"
-LEVEL_ID = f"{CHRISTMAS_PREFIX}level"
 
 PASS_REWARDS = {
     1: {"reward": "event_pokemon", "id": EVENT_SMOLLIV},
@@ -507,15 +506,13 @@ class Christmas(commands.Cog):
 
         ## POKÉPASS VALUES
         member = await self.bot.mongo.fetch_member_info(ctx.author)
-        level = member[LEVEL_ID]
-        xp = member[XP_ID]
+        member_total_xp = member[XP_ID]
+        level, remaining_xp = self.xp_to_level(member_total_xp)
 
         requirement = self.get_xp_requirement(level)
 
         embed.add_field(name=f"Your {FlavorStrings.pokepass} Level:", value=f"{level}", inline=False)
-        embed.add_field(
-            name=f"Your {FlavorStrings.pokepass} XP:", value=f"{xp} / {requirement}", inline=False
-        )
+        embed.add_field(name=f"Your {FlavorStrings.pokepass} XP:", value=f"{remaining_xp} / {requirement}", inline=False)
 
         next_level = level + 1
         if next_level > len(PASS_REWARDS):
@@ -541,12 +538,9 @@ class Christmas(commands.Cog):
         # Main menu image showing Poképass progress
         image = None
         if hasattr(self.bot.config, "IMGEN_URL"):
-            progress = round(level + (xp / requirement), 3)
+            progress = round(level + (remaining_xp / requirement), 3)
             url = urljoin(self.bot.config.IMGEN_URL, f"events/christmas_2023/get_battle_pass_image")
-            data = {
-                "progress": progress,
-                "windows": imgen_windows
-            }
+            data = {"progress": progress, "windows": imgen_windows}
 
             async with self.bot.http_session.post(url, json=data) as resp:
                 if resp.status == 200:
@@ -569,12 +563,13 @@ class Christmas(commands.Cog):
         """View all the rewards obtainable from the Poképass."""
 
         member = await self.bot.mongo.fetch_member_info(ctx.author)
-        level = member[LEVEL_ID]
+        level, remaining_xp = self.xp_to_level(member[XP_ID])
 
         total_count = len(PASS_REWARDS)
         max_padding = len(str(total_count))  # Max number of digits that appear in our pages, for padding
 
         PER_PAGE = 15
+
         async def get_page(source, menu, pidx):
             pgstart = pidx * PER_PAGE
             pgend = min(pgstart + PER_PAGE, total_count)
@@ -606,8 +601,9 @@ class Christmas(commands.Cog):
             await self.give_xp(ctx.author, amount=qty)
             await ctx.send(f"Gave {ctx.author.name} {qty} XP!")
         if type in ["lvl", "level"]:
-            await self.bot.mongo.update_member(ctx.author, {"$set": {LEVEL_ID: qty}})
-            await ctx.send(f"Set {ctx.author.name}'s level to {qty}!")
+            xp = self.min_xp_at(qty)
+            await self.bot.mongo.update_member(ctx.author, {"$set": {XP_ID: xp}})
+            await ctx.send(f"Set {ctx.author.name}'s level to {qty} ({xp}XP)!")
 
     ## Utils
 
@@ -700,49 +696,38 @@ class Christmas(commands.Cog):
     def get_xp_requirement(self, level: int):
         return XP_REQUIREMENT["base"] if level < len(PASS_REWARDS) else XP_REQUIREMENT["extra"]
 
+    def min_xp_at(self, level: int):
+        base_levels = min(level, len(PASS_REWARDS))
+        extra_levels = max(level - len(PASS_REWARDS), 0)
+        return XP_REQUIREMENT["base"] * base_levels + XP_REQUIREMENT["extra"] * extra_levels
+
+    def xp_to_level(self, xp: int) -> Tuple[int]:
+        max_base_xp = self.min_xp_at(len(PASS_REWARDS))
+        base_xp = min(xp, max_base_xp)
+        extra_xp = max(xp - max_base_xp, 0)
+
+        level, xp_mult = divmod(base_xp / XP_REQUIREMENT["base"] + extra_xp / XP_REQUIREMENT["extra"], 1)
+
+        xp_requirement = self.get_xp_requirement(level)
+        remaining_xp = round(xp_mult * xp_requirement)
+
+        return (int(level), remaining_xp)
+
     async def give_xp(self, user: discord.User, amount):
         """Function to give xp to a user and level up if requirements met."""
 
-        # Update XP right away
-        member = self.bot.mongo.Member.build_from_mongo(
-            await self.bot.mongo.db.member.find_one_and_update(
-                {"_id": user.id}, {"$inc": {XP_ID: amount}}
-            )
-        )
+        member = await self.bot.mongo.db.member.find_one_and_update({"_id": user.id}, {"$inc": {XP_ID: amount}})
+        member = self.bot.mongo.Member.build_from_mongo(member)
         await self.bot.redis.hdel(f"db:member", int(member.id))
 
-        # Update variables
-        member_xp = member[XP_ID]
-        member_level = member[LEVEL_ID]
+        member_total_xp = member[XP_ID]
+        member_level, remaining_xp = self.xp_to_level(member_total_xp)
 
-        # Calculate and update level
-        new_xp = member_xp + amount
-        requirement = self.get_xp_requirement(member_level)
-        if member_xp < requirement <= new_xp:
-            new_level = member_level
-            # While xp is larger than requirement, level up and lower xp
-            # and at the same time update the requirement in case it changes
-            # based on the new level.
-            while new_xp >= requirement:
-                new_level += 1
-                new_xp -= requirement
-                requirement = self.get_xp_requirement(new_level)
-
-            update = {
-                "$inc": {
-                    XP_ID: new_xp - (member_xp + amount),
-                    LEVEL_ID: new_level - member_level,
-                },
-            }
-            await self.bot.mongo.db.member.find_one_and_update(
-                {"_id": member.id}, update
-            )
-            await self.bot.redis.hdel(f"db:member", int(member.id))
-
+        new_xp = member_total_xp + amount
+        new_level, remaining_xp = self.xp_to_level(new_xp)
+        if new_level > member_level:
             # Give the rewards and send DMs in chunks of 6, after updating XP and level
-            for chunk in discord.utils.as_chunks(
-                range(member_level + 1, new_level + 1), 6
-            ):
+            for chunk in discord.utils.as_chunks(range(member_level + 1, new_level + 1), 6):
                 embeds = []
                 for l in chunk:
                     embeds.append(await self.reward_level_up(user, member, l))
@@ -753,7 +738,6 @@ class Christmas(commands.Cog):
 
     @commands.Cog.listener("on_catch")
     async def xp_per_catch(self, ctx, species, id):
-        # Giving XP this way may lead to race conditions?
         await self.give_xp(ctx.author, QUEST_REWARDS["catch"])
 
     # PRESENTS
