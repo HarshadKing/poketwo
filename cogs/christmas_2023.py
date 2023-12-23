@@ -707,27 +707,34 @@ class Christmas(commands.Cog):
         member_xp = member[XP_ID]
         member_level = member[LEVEL_ID]
 
-        new_xp = member_xp + amount
-        new_level = member_level
+        # Update XP right away
+        member = self.bot.mongo.Member.build_from_mongo(
+            await self.bot.mongo.db.member.find_one_and_update({"_id": member.id}, {"$inc": {XP_ID: amount}})
+        )
+        await self.bot.redis.hdel(f"db:member", int(member.id))
 
-        requirement = self.get_xp_requirement(new_level)
-        while new_xp >= requirement:
+        # Update variables
+        member_xp = member[XP_ID]
+        member_level = member[LEVEL_ID]
+
+        # Calculate and update level
+        new_xp = member_xp + amount
+        requirement = self.get_xp_requirement(member_level)
+        if member_xp < requirement <= new_xp:
+            new_level = member_level
             # While xp is larger than requirement, level up and lower xp
             # and at the same time update the requirement in case it changes
             # based on the new level.
-            new_level += 1
-            new_xp -= requirement
-            requirement = self.get_xp_requirement(new_level)
+            while new_xp >= requirement:
+                new_level += 1
+                new_xp -= requirement
+                requirement = self.get_xp_requirement(new_level)
 
-        update = {"$inc": {XP_ID: new_xp - member_xp}}
-        if new_level > member_level:
-            update["$inc"][LEVEL_ID] = new_level - member_level
+            update = {"$set": {XP_ID: new_xp}, "$inc": {LEVEL_ID: new_level - member_level}}
+            await self.bot.mongo.db.member.find_one_and_update({"_id": member.id}, update)
+            await self.bot.redis.hdel(f"db:member", int(member.id))
 
-        await self.bot.mongo.db.member.find_one_and_update({"_id": member.id}, update)
-        await self.bot.redis.hdel(f"db:member", int(member.id))
-
-        # Give the rewards and send DMs in chunks, after updating level and XP
-        if new_level > member_level:
+            # Give the rewards and send DMs in chunks of 6, after updating XP and level
             for chunk in discord.utils.as_chunks(range(member_level + 1, new_level + 1), 6):
                 embeds = []
                 for l in chunk:
