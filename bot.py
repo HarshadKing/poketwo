@@ -49,6 +49,7 @@ CONCURRENCY_LIMITED_COMMANDS = {
     "pride",
     "summer",
     "expedition"
+    "christmas"
 }
 
 
