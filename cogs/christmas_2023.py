@@ -160,19 +160,17 @@ PRESENTS_WINDOW_ID = "presents"
 
 # Window ID corresponding to each kind of reward for the image generation
 WINDOW_MAPPINGS = {
-        "pokecoins": "coins",  # Pokécoins
-        "shards": "shards",  # Shards
-        "badge": "smoliv",  # Badge
-
-        # Event pokémon
-        "event_pokemon": PRESENTS_WINDOW_ID,  # Event pokémon default windwow
-        EVENT_SMOLLIV: "smoliv",  # Christmas Tree Smoliv
-        EVENT_DOLLIV: "dolliv",  # Christmas Tree Dolliv
-        EVENT_ARBOLIVA: "arboliva",  # Christmas Tree Arboliva
-
-        # Other pokémon
-        "iv_pokemon": PRESENTS_WINDOW_ID,
-        "rarity_pokemon": PRESENTS_WINDOW_ID
+    "pokecoins": "coins",  # Pokécoins
+    "shards": "shards",  # Shards
+    "badge": "smoliv",  # Badge
+    # Event pokémon
+    "event_pokemon": PRESENTS_WINDOW_ID,  # Event pokémon default windwow
+    EVENT_SMOLLIV: "smoliv",  # Christmas Tree Smoliv
+    EVENT_DOLLIV: "dolliv",  # Christmas Tree Dolliv
+    EVENT_ARBOLIVA: "arboliva",  # Christmas Tree Arboliva
+    # Other pokémon
+    "iv_pokemon": PRESENTS_WINDOW_ID,
+    "rarity_pokemon": PRESENTS_WINDOW_ID,
 }
 
 # The list of window IDs generated from the pass rewards
@@ -182,7 +180,7 @@ for level in PASS_REWARDS.values():
     if (s_id := level.get("id")) and (s_window := WINDOW_MAPPINGS.get(s_id)):
         window = s_window
     # Else if the level's reward entry has a corresponding window ID, use that
-    elif (r_window := WINDOW_MAPPINGS.get(level["reward"])):
+    elif r_window := WINDOW_MAPPINGS.get(level["reward"]):
         window = r_window
     # Otherwise use the presents window ID, as a default
     else:
@@ -300,18 +298,13 @@ def make_quest(event: str, count_range: range, **condition):
 
 
 REGION_RANGES = {
-    "daily": unwind(
-        {
-            REGIONS[:-1]: range(10, 21),  # All regions except hisui
-            ("hisui",): range(1, 4)
-        }
-    ),
+    "daily": unwind({REGIONS[:-1]: range(10, 21), ("hisui",): range(1, 4)}),  # All regions except hisui
     "weekly": unwind(
         {
             ("paldea",): range(100, 151),
             ("kanto", "johto", "hoenn", "unova"): range(80, 101),
             ("sinnoh", "alola", "kalos", "galar"): range(70, 91),
-            ("hisui",): range(5, 16)
+            ("hisui",): range(5, 16),
         }
     ),
 }
@@ -319,7 +312,9 @@ REGION_RANGES = {
 DAILY_QUESTS = [
     make_quest("catch", range(20, 31)),  # Any catch quest
     make_quest("catch", range(10, 21), type=lambda: random.choice(TYPES)),  # Type pokemon quests
-    make_quest("catch", lambda c: REGION_RANGES["daily"][c["region"]], region=lambda: random.choice(REGIONS)),  # Region pokemon quests
+    make_quest(
+        "catch", lambda c: REGION_RANGES["daily"][c["region"]], region=lambda: random.choice(REGIONS)
+    ),  # Region pokemon quests
     make_quest("catch", range(5, 11), rarity="event"),  # Event pokemon quests
     make_quest("catch", range(10, 21), rarity="paradox"),  # Paradox pokemon quests
     make_quest("market_buy", [500, 1000]),  # Market Purchase quest
@@ -333,16 +328,16 @@ DAILY_QUESTS = [
 WEEKLY_QUESTS = [
     make_quest("catch", range(600, 751)),  # Any catch quest
     make_quest("catch", range(100, 151), type=lambda: random.choice(TYPES)),  # Type pokemon quests
-    make_quest("catch", lambda c: REGION_RANGES["weekly"][c["region"]], region=lambda: random.choice(REGIONS)),  # Region pokemon quests
+    make_quest(
+        "catch", lambda c: REGION_RANGES["weekly"][c["region"]], region=lambda: random.choice(REGIONS)
+    ),  # Region pokemon quests
     make_quest("catch", range(1, 4), rarity=lambda: random.choice(RARITIES)),  # Rare pokemon quests
     make_quest("catch", range(1, 4), form=lambda: random.choice(FORMS)),  # Regional form pokemon quests
     make_quest("catch", range(10, 16), rarity="event"),  # Event pokemon quests
     make_quest("market_buy", [4000, 5000, 5500]),  # Market Purchase quest
     make_quest("market_sell", [4000, 5000, 5500]),  # Market Sale quest
     make_quest("open_box", range(4, 7)),  # Voting box quest
-    make_quest(
-        "battle_start", range(6, 11), type=lambda: random.choice(TYPES)
-    ),  # Battling with certain types quest
+    make_quest("battle_start", range(6, 11), type=lambda: random.choice(TYPES)),  # Battling with certain types quest
 ]
 
 
@@ -513,7 +508,9 @@ class Christmas(commands.Cog):
         requirement = self.get_xp_requirement(level)
 
         embed.add_field(name=f"Your {FlavorStrings.pokepass} Level:", value=f"{level}", inline=False)
-        embed.add_field(name=f"Your {FlavorStrings.pokepass} XP:", value=f"{remaining_xp} / {requirement}", inline=False)
+        embed.add_field(
+            name=f"Your {FlavorStrings.pokepass} XP:", value=f"{remaining_xp} / {requirement}", inline=False
+        )
 
         next_level = level + 1
         if next_level > len(PASS_REWARDS):
@@ -580,7 +577,7 @@ class Christmas(commands.Cog):
             for reward in list(PASS_REWARDS.items())[pgstart:pgend]:
                 text = await self.make_reward_text(reward=reward[1])
                 level_text = f"{reward[0]:>{max_padding}}"
-                reward_text = text if reward[0] <= level else f'**{text}**'
+                reward_text = text if reward[0] <= level else f"**{text}**"
 
                 description += f"`{level_text}`　{reward_text}" + "\n"
 
