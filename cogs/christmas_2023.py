@@ -758,7 +758,7 @@ class Christmas(commands.Cog):
 
         if presents < qty:
             return await ctx.send(
-                f"You don't have enough {FlavorStrings.present:sb}! {FlavorStrings.present:sb!e} are earned for every new level after compeleting the {FlavorStrings.pokepass}."
+                f"You don't have enough {FlavorStrings.present:sb}! {FlavorStrings.present:s!e} are earned for every new level after completing the {FlavorStrings.pokepass}."
             )
 
         # GO
