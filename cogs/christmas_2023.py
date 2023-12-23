@@ -1,5 +1,6 @@
 from __future__ import annotations
 import asyncio
+from collections import defaultdict
 from functools import cached_property
 import math
 import contextlib
@@ -967,28 +968,6 @@ class Christmas(commands.Cog):
 
         return await self.renew_quests(member)
 
-    async def check_quests(self, user: Union[discord.User, discord.Member]):
-        """Function to check for quest completions."""
-
-        quests = await self.fetch_quests(user)
-        if not quests:
-            return
-
-        for q in quests:
-            if q["progress"] >= q["count"] and not q.get("completed"):
-                await self.bot.mongo.db.member.update_one(
-                    {"_id": user.id, f"{QUESTS_ID}._id": q["_id"]},
-                    {"$set": {f"{QUESTS_ID}.$.completed": True}},
-                )
-                await self.bot.redis.hdel("db:member", user.id)
-
-                inc_xp = QUEST_REWARDS[q["type"]]
-                with contextlib.suppress(discord.HTTPException):
-                    await user.send(
-                        f"You completed the {FlavorStrings.pokepass} minigame **{get_quest_description(q)}**! You received **{inc_xp}XP**!"
-                    )
-                    await self.give_xp(user, inc_xp)
-
     def verify_condition(self, condition: dict, species: Species):
         """Function to verify conditions of a pokemon's species with quest requirements."""
 
@@ -1009,20 +988,33 @@ class Christmas(commands.Cog):
         if not quests:
             return
 
-        for q in quests:
+        update = defaultdict(defaultdict)
+        completed = []
+        for i, q in enumerate(quests):
             if q["event"] != event:
                 continue
 
             if (
                 len(to_verify) == 0 or any(self.verify_condition(q.get("condition"), x) for x in to_verify)
             ) and not q.get("completed"):
-                await self.bot.mongo.db.member.update_one(
-                    {"_id": user.id, f"{QUESTS_ID}._id": q["_id"]},
-                    {"$inc": {f"{QUESTS_ID}.$.progress": min(count, q["count"] - q["progress"])}},
-                )
+                quest_idx = f"{QUESTS_ID}.{i}"
 
-        await self.bot.redis.hdel("db:member", user.id)
-        await self.check_quests(user)
+                update["$inc"][f"{quest_idx}.progress"] = min(count, q["count"] - q["progress"])
+                if q["progress"] + count >= q["count"]:
+                    update["$set"][f"{quest_idx}.completed"] = True
+                    completed.append(q)
+
+        if len(update) > 0:
+            await self.bot.mongo.update_member(user, update)
+
+            # Give the XP and send DMs
+            for q in completed:
+                inc_xp = QUEST_REWARDS[q["type"]]
+                with contextlib.suppress(discord.HTTPException):
+                    await user.send(
+                        f"You completed the {FlavorStrings.pokepass} minigame **{get_quest_description(q)}**! You received **{inc_xp}XP**!"
+                    )
+                    await self.give_xp(user, inc_xp)
 
     ## Event listeners
 
