@@ -703,13 +703,11 @@ class Christmas(commands.Cog):
     async def give_xp(self, user: discord.User, amount):
         """Function to give xp to a user and level up if requirements met."""
 
-        member = await self.bot.mongo.fetch_member_info(user)
-        member_xp = member[XP_ID]
-        member_level = member[LEVEL_ID]
-
         # Update XP right away
         member = self.bot.mongo.Member.build_from_mongo(
-            await self.bot.mongo.db.member.find_one_and_update({"_id": member.id}, {"$inc": {XP_ID: amount}})
+            await self.bot.mongo.db.member.find_one_and_update(
+                {"_id": user.id}, {"$inc": {XP_ID: amount}}
+            )
         )
         await self.bot.redis.hdel(f"db:member", int(member.id))
 
@@ -730,12 +728,21 @@ class Christmas(commands.Cog):
                 new_xp -= requirement
                 requirement = self.get_xp_requirement(new_level)
 
-            update = {"$set": {XP_ID: new_xp}, "$inc": {LEVEL_ID: new_level - member_level}}
-            await self.bot.mongo.db.member.find_one_and_update({"_id": member.id}, update)
+            update = {
+                "$inc": {
+                    XP_ID: new_xp - (member_xp + amount),
+                    LEVEL_ID: new_level - member_level,
+                },
+            }
+            await self.bot.mongo.db.member.find_one_and_update(
+                {"_id": member.id}, update
+            )
             await self.bot.redis.hdel(f"db:member", int(member.id))
 
             # Give the rewards and send DMs in chunks of 6, after updating XP and level
-            for chunk in discord.utils.as_chunks(range(member_level + 1, new_level + 1), 6):
+            for chunk in discord.utils.as_chunks(
+                range(member_level + 1, new_level + 1), 6
+            ):
                 embeds = []
                 for l in chunk:
                     embeds.append(await self.reward_level_up(user, member, l))
