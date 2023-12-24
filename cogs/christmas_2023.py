@@ -730,7 +730,8 @@ class Christmas(commands.Cog):
                 for l in chunk:
                     embeds.append(await self.reward_level_up(user, member, l))
 
-                await self.bot.send_dm(user, embeds=embeds)
+                with contextlib.suppress(discord.HTTPException):
+                    await self.bot.send_dm(user, embeds=embeds)
 
     ## Event handlers
 
@@ -908,12 +909,13 @@ class Christmas(commands.Cog):
         async for member in quests:
             await asyncio.create_task(self.renew_quests(member))
             if member.christmas_2023_quests_notify is not False:
-                await asyncio.create_task(
-                    self.bot.send_dm(
-                        discord.Object(member.id),
-                        f"You have new {FlavorStrings.pokepass} minigames available! Use {CMD_MINIGAMES.format('@Pokétwo')} to view them! You can disable this notification using {CMD_TOGGLE_NOTIFICATIONS.format('@Pokétwo')}.",
+                with contextlib.suppress(discord.HTTPException):
+                    await asyncio.create_task(
+                        self.bot.send_dm(
+                            discord.Object(member.id),
+                            f"You have new {FlavorStrings.pokepass} minigames available! Use {CMD_MINIGAMES.format('@Pokétwo')} to view them! You can disable this notification using {CMD_TOGGLE_NOTIFICATIONS.format('@Pokétwo')}.",
+                        )
                     )
-                )
 
     @notify_quests.before_loop
     async def before_notify_loop(self):
@@ -1011,7 +1013,7 @@ class Christmas(commands.Cog):
                     await user.send(
                         f"You completed the {FlavorStrings.pokepass} minigame **{get_quest_description(q)}**! You received **{inc_xp}XP**!"
                     )
-                    await self.give_xp(user, inc_xp)
+                await self.give_xp(user, inc_xp)
 
     ## Event listeners
 
