@@ -591,17 +591,18 @@ class Christmas(commands.Cog):
         await pages.start(ctx)
 
     @commands.is_owner()
-    @christmas.command(aliases=("debug", "d"), usage="<type> [qty=1]")
-    async def debugging(self, ctx: PoketwoContext, type, qty: int):
+    @christmas.command(aliases=("debug", "d", "debugging"), usage="<type> [qty=1]")
+    async def give(self, ctx: PoketwoContext, type: str, qty: int, user: discord.User | discord.Member = None):
         """Admin-only debugging command to grant XP and Levels."""
 
+        user = user or ctx.author
         if type == "xp":
-            await self.give_xp(ctx.author, amount=qty)
-            await ctx.send(f"Gave {ctx.author.name} {qty} XP!")
+            await self.give_xp(user, amount=qty)
+            await ctx.send(f"Gave {user.name} {qty} XP!")
         if type in ["lvl", "level"]:
             xp = self.min_xp_at(qty)
-            await self.bot.mongo.update_member(ctx.author, {"$set": {XP_ID: xp}})
-            await ctx.send(f"Set {ctx.author.name}'s level to {qty} ({xp}XP)!")
+            await self.bot.mongo.update_member(user, {"$set": {XP_ID: xp}})
+            await ctx.send(f"Set {user.name}'s level to {qty} ({xp}XP)!")
 
     ## Utils
 
