@@ -592,7 +592,7 @@ class Christmas(commands.Cog):
 
     @commands.is_owner()
     @christmas.command(aliases=("debug", "d", "debugging"), usage="<type> [qty=1]")
-    async def give(self, ctx: PoketwoContext, type: str, qty: int, user: discord.User | discord.Member = None):
+    async def give(self, ctx: PoketwoContext, user: discord.User | discord.Member, type: str, qty: int):
         """Admin-only debugging command to grant XP and Levels."""
 
         user = user or ctx.author
