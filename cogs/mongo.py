@@ -488,7 +488,7 @@ class Mongo(commands.Cog):
             val = self.Member.build_from_mongo(pickle.loads(val))
 
         # If username in the database doesn't match with current username, update
-        if val and val.username != member.name:
+        if (val and isinstance(member, (discord.Member, discord.User))) and val.username != member.name:
             result = await self.update_member(member, {"$set": {"username": member.name}})
             # Set it for the Member object to be returned as well, if modified successfully.
             # This check is not really necessary since it wouldn't get this far anyway if it doesn't
