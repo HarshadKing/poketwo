@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 import itertools
 import random
 import textwrap
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, List, Optional, Tuple, Union
 from urllib.parse import urljoin
 import uuid
 
@@ -55,7 +55,7 @@ class FlavorStrings:
     badge = FlavorString("Christmas 2023 Badge", "<:badge_christmas_2023:1185512567716708435>")
 
 
-TYPES = [
+TYPES = (
     "Normal",
     "Fighting",
     "Flying",
@@ -74,7 +74,7 @@ TYPES = [
     "Dragon",
     "Dark",
     "Fairy",
-]
+)
 REGIONS = ("kanto", "johto", "hoenn", "sinnoh", "unova", "kalos", "alola", "galar", "paldea", "hisui")
 RARITIES = ("mythical", "legendary", "ub")
 FORMS = ("alolan", "galarian", "hisuian")
@@ -251,10 +251,10 @@ def get_quest_description(quest: dict):
                 elif region := condition.get("region"):
                     description = f"Catch {count} pokémon from the {region.title()} region"
                 elif rarity := condition.get("rarity"):
-                    title = "Ultra Beast" if rarity == "ub" else rarity.title()
+                    title = "Rare" if isinstance(rarity, (tuple, list)) else rarity.capitalize()
                     description = f"Catch {count} {title} pokémon"
                 elif form := condition.get("form"):
-                    title = form.title()
+                    title = "Regional" if isinstance(form, (tuple, list)) else form.capitalize()
                     description = f"Catch {count} {title} Form pokémon"
             else:
                 description = f"Catch {count} pokémon"
@@ -287,7 +287,7 @@ def get_quest_description(quest: dict):
     return description
 
 
-def make_quest(event: str, count_range: range, **condition):
+def make_quest(event: str, count_range: range | Callable | Iterable, **condition: dict):
     """Function to make a quest with any event, range of count and conditions."""
 
     return lambda: {
@@ -298,28 +298,41 @@ def make_quest(event: str, count_range: range, **condition):
 
 
 REGION_RANGES = {
-    "daily": unwind({REGIONS[:-1]: range(10, 21), ("hisui",): range(1, 4)}),  # All regions except hisui
+    "daily": unwind({REGIONS[:-1]: range(10, 21)}),  # All regions except hisui
     "weekly": unwind(
         {
             ("paldea",): range(100, 151),
             ("kanto", "johto", "hoenn", "unova"): range(80, 101),
             ("sinnoh", "alola", "kalos", "galar"): range(70, 91),
-            ("hisui",): range(5, 16),
+            ("hisui",): [1],
+        }
+    ),
+}
+
+TYPE_RANGES = {
+    "daily": unwind({TYPES: range(10, 21)}),  # All types
+    "weekly": unwind(
+        {
+            ("Normal", "Water", "Grass", "Flying", "Bug"): range(80, 101),
+            ("Poison", "Ground", "Psychic", "Rock", "Electric", "Ghost"): range(70, 91),
+            ("Dragon", "Fire", "Fairy", "Dark", "Fighting", "Steel", "Ice"): range(60, 81),
         }
     ),
 }
 
 DAILY_QUESTS = [
     make_quest("catch", range(20, 31)),  # Any catch quest
-    make_quest("catch", range(10, 21), type=lambda: random.choice(TYPES)),  # Type pokemon quests
     make_quest(
-        "catch", lambda c: REGION_RANGES["daily"][c["region"]], region=lambda: random.choice(REGIONS)
-    ),  # Region pokemon quests
-    make_quest("catch", range(5, 11), rarity="event"),  # Event pokemon quests
+        "catch", lambda c: TYPE_RANGES["daily"][c["type"]], type=lambda: random.choice(TYPES)
+    ),  # Type pokemon quests
+    make_quest(
+        "catch", lambda c: REGION_RANGES["daily"][c["region"]], region=lambda: random.choice(REGIONS[:-1])
+    ),  # Region pokemon quests except hisui
+    make_quest("catch", [1], rarity="event"),  # Event pokemon quests
     make_quest("catch", range(10, 21), rarity="paradox"),  # Paradox pokemon quests
     make_quest("market_buy", [500, 1000]),  # Market Purchase quest
     make_quest("market_sell", [500, 1000]),  # Market Sale quest
-    make_quest("open_box", range(1, 2)),  # Voting box quest
+    make_quest("open_box", [1]),  # Voting box quest
     make_quest("trade", range(3, 6)),  # Trading quest
     make_quest("battle_start", range(1, 4), type=lambda: random.choice(TYPES)),  # Battling with certain types quest
     make_quest("release", range(5, 11)),  # Releasing quest
@@ -327,13 +340,15 @@ DAILY_QUESTS = [
 
 WEEKLY_QUESTS = [
     make_quest("catch", range(600, 751)),  # Any catch quest
-    make_quest("catch", range(100, 151), type=lambda: random.choice(TYPES)),  # Type pokemon quests
+    make_quest(
+        "catch", lambda c: TYPE_RANGES["weekly"][c["type"]], type=lambda: random.choice(TYPES)
+    ),  # Type pokemon quests
     make_quest(
         "catch", lambda c: REGION_RANGES["weekly"][c["region"]], region=lambda: random.choice(REGIONS)
     ),  # Region pokemon quests
-    make_quest("catch", range(1, 4), rarity=lambda: random.choice(RARITIES)),  # Rare pokemon quests
-    make_quest("catch", range(1, 4), form=lambda: random.choice(FORMS)),  # Regional form pokemon quests
-    make_quest("catch", range(10, 16), rarity="event"),  # Event pokemon quests
+    make_quest("catch", range(1, 4), rarity=RARITIES),  # Rare pokemon quests
+    make_quest("catch", range(1, 4), form=FORMS),  # Regional form pokemon quests
+    make_quest("catch", range(3, 6), rarity="event"),  # Event pokemon quests
     make_quest("market_buy", [4000, 5000, 5500]),  # Market Purchase quest
     make_quest("market_sell", [4000, 5000, 5500]),  # Market Sale quest
     make_quest("open_box", range(4, 7)),  # Voting box quest
@@ -977,8 +992,12 @@ class Christmas(commands.Cog):
                     return False
                 elif k == "region" and v != species.region:
                     return False
-                elif k in ("rarity", "form") and species.id not in getattr(self.bot.data, f"list_{v}"):
-                    return False
+                elif k in ("rarity", "form"):
+                    if isinstance(v, (tuple, list)):
+                        if species.id not in [sid for r in v for sid in getattr(self.bot.data, f"list_{r}")]:
+                            return False
+                    elif species.id not in getattr(self.bot.data, f"list_{v}"):
+                        return False
         return True
 
     async def on_quest_event(self, user: Union[discord.User, discord.Member], event: str, to_verify: list, *, count=1):
