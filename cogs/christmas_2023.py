@@ -474,7 +474,7 @@ class Christmas(commands.Cog):
         match reward:
             case "event_pokemon":
                 population = self.pools["event_pokemon"]
-                weights = EVENT_CHANCES
+                weights = EVENT_WEIGHTS
                 shiny_boost = 10
             case "rarity_pokemon" | "ub" | "legendary" | "mythical":
                 pool = [x for x in self.pools[reward] if x.catchable]
