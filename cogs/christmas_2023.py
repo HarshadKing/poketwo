@@ -235,7 +235,7 @@ PRESENT_WEIGHTS = [*PRESENT_CHANCES.values()]
 QUESTS_ID = f"{CHRISTMAS_PREFIX}quests"
 QUESTS_NOTIFY_ID = f"{CHRISTMAS_PREFIX}quests_notify"
 
-QUEST_REWARDS = {"daily": 1100, "weekly": 2800, "catch": 1}
+QUEST_REWARDS = {"daily": 1100, "weekly": 2800, "catch": 3}
 
 
 def get_quest_description(quest: dict):
