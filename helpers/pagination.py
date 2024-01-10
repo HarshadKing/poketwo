@@ -72,11 +72,12 @@ class AsyncListPageSource(menus.AsyncIteratorPageSource):
 
 
 class ContinuablePages(ViewMenuPages):
-    def __init__(self, source, allow_last=True, allow_go=True, loop_pages=True, **kwargs):
+    def __init__(self, source, allow_last=True, allow_go=True, loop_pages=True, mention_author=False, **kwargs):
         super().__init__(source, **kwargs, timeout=120)
         self.allow_last = allow_last
         self.allow_go = allow_go
         self.loop_pages = loop_pages
+        self.mention_author = mention_author
         for x in REMOVE_BUTTONS:
             self.remove_button(x)
 
@@ -95,6 +96,8 @@ class ContinuablePages(ViewMenuPages):
     async def send_initial_message(self, ctx, channel):
         page = await self._source.get_page(self.current_page)
         kwargs = await self._get_kwargs_from_page(page)
+        kwargs["reference"] = ctx.message
+        kwargs["mention_author"] = self.mention_author
         return await self.send_with_view(channel, **kwargs)
 
     async def show_checked_page(self, page_number):

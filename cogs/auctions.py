@@ -547,7 +547,8 @@ class Auctions(commands.Cog):
                 format_item=format_item,
                 per_page=15,
                 count=count,
-            )
+            ),
+            mention_author=True,
         )
         pages.current_page = flags["page"] - 1
         self.bot.menus[ctx.author.id] = pages
@@ -555,7 +556,7 @@ class Auctions(commands.Cog):
         try:
             await pages.start(ctx)
         except IndexError:
-            await ctx.send("No auctions found.")
+            await ctx.reply("No auctions found.")
 
     # TODO make all groups case insensitive
 

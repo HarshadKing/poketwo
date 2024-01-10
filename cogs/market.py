@@ -105,13 +105,14 @@ class Market(commands.Cog):
             ),
             allow_last=False,
             allow_go=False,
+            mention_author=True,
         )
         self.bot.menus[ctx.author.id] = pages
 
         try:
             await pages.start(ctx)
         except IndexError:
-            await ctx.send("No listings found.")
+            await ctx.reply("No listings found.")
 
     @checks.has_started()
     @checks.is_not_in_trade()

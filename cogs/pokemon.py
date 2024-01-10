@@ -50,7 +50,7 @@ class Pokemon(commands.Cog):
                 ops = []
 
         await self.bot.mongo.db.pokemon.bulk_write(ops)
-        await ctx.send("Successfully reindexed all your pokémon!")
+        await ctx.reply("Successfully reindexed all your pokémon!")
 
     @checks.has_started()
     @commands.command(aliases=("nick",))
@@ -188,9 +188,9 @@ class Pokemon(commands.Cog):
         )
 
         if nicknameall is None:
-            await ctx.send(f"Removed nickname for {num} pokémon.")
+            await ctx.reply(f"Removed nickname for {num} pokémon.")
         else:
-            await ctx.send(f"Changed nickname to `{nicknameall}` for {num} pokémon.")
+            await ctx.reply(f"Changed nickname to `{nicknameall}` for {num} pokémon.")
 
     @checks.has_started()
     @checks.is_not_in_trade()
@@ -353,7 +353,7 @@ class Pokemon(commands.Cog):
             {"$set": {"favorite": True}},
         )
 
-        await ctx.send(f"Favorited your {unfavnum} unfavorited pokemon.\nAll {num} selected pokemon are now favorited.")
+        await ctx.reply(f"Favorited your {unfavnum} unfavorited pokemon.\nAll {num} selected pokemon are now favorited.")
 
     # Filter
     @flags.add_flag("--shiny", action="store_true")
@@ -441,7 +441,7 @@ class Pokemon(commands.Cog):
             {"$set": {"favorite": False}},
         )
 
-        await ctx.send(f"Unfavorited your {favnum} favorited pokemon.\nAll {num} selected pokemon are now unfavorited.")
+        await ctx.reply(f"Unfavorited your {favnum} favorited pokemon.\nAll {num} selected pokemon are now unfavorited.")
 
     @checks.has_started()
     @commands.cooldown(3, 5, commands.BucketType.user)
@@ -881,7 +881,7 @@ class Pokemon(commands.Cog):
             },
         )
 
-        await ctx.send(
+        await ctx.reply(
             f"You have released {result.modified_count} pokémon. You received {2*result.modified_count:,} Pokécoins!"
         )
         self.bot.dispatch("release", ctx.author, result.modified_count)
@@ -965,7 +965,8 @@ class Pokemon(commands.Cog):
                 format_item=format_item,
                 per_page=20,
                 count=count,
-            )
+            ),
+            mention_author=True,
         )
         pages.current_page = flags["page"] - 1
         self.bot.menus[ctx.author.id] = pages
@@ -973,7 +974,7 @@ class Pokemon(commands.Cog):
         try:
             await pages.start(ctx)
         except IndexError:
-            await ctx.send("No pokémon found.")
+            await ctx.reply("No pokémon found.")
 
     @flags.add_flag("page", nargs="*", type=str, default="1")
     @flags.add_flag("--caught", action="store_true")
