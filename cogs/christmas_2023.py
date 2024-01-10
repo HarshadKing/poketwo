@@ -1,6 +1,6 @@
 from __future__ import annotations
 import asyncio
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 from functools import cached_property
 import math
 import contextlib
@@ -232,6 +232,14 @@ PRESENT_WEIGHTS = [*PRESENT_CHANCES.values()]
 
 # QUESTS
 
+QuestPeriod = namedtuple("Period", ["period", "elapsed"])
+
+QUESTS_START = datetime(2023, 12, 23, 21, 0, 0)
+DURATIONS = {
+    "daily": timedelta(days=1),
+    "weekly": timedelta(days=7),
+}
+
 QUESTS_ID = f"{CHRISTMAS_PREFIX}quests"
 QUESTS_NOTIFY_ID = f"{CHRISTMAS_PREFIX}quests_notify"
 
@@ -402,8 +410,6 @@ class Christmas(commands.Cog):
 
     def __init__(self, bot):
         self.bot: ClusterBot = bot
-        if self.bot.cluster_idx == 0:
-            self.notify_quests.start()
 
     # GENERAL
 
@@ -412,8 +418,6 @@ class Christmas(commands.Cog):
 
     async def cog_unload(self):
         self.bot.Embed.CUSTOM_COLOR = None  # Unset custom embed color
-        if self.bot.cluster_idx == 0:
-            self.notify_quests.cancel()
 
     @cached_property
     def pools(self) -> Dict[str, List[Species]]:
@@ -857,8 +861,8 @@ class Christmas(commands.Cog):
         key = lambda q: q["type"]
         groups = itertools.groupby(sorted(all_quests, key=key), key)  # Group by daily/weekly
 
+        now = datetime.now()
         for group, quests in groups:
-            expires = None
             value = []
             for q in quests:
                 description = get_quest_description(q)
@@ -869,14 +873,14 @@ class Christmas(commands.Cog):
                 dl.insert(max(round(q["progress"] / q["count"] * len(dl)), 2), "__")
 
                 value.append(f"{'`☑`' if q.get('completed') else '`☐`'} {''.join(dl)} `{q['progress']}/{q['count']}`")
-                expires = q["expires"]
+                duration = DURATIONS[q["type"]]
+                timespan = duration - self.get_period(duration, now).elapsed
+                ts = discord.utils.format_dt(now + timespan)
 
-            timespan = expires - datetime.now()
-            ts = f"<t:{int(expires.timestamp())}:{{0}}>"
             embed.add_field(
-                name=f"{q['type'].capitalize()} Minigames — {QUEST_REWARDS[q['type']]}XP each",
+                name=f"{q['type'].capitalize()} Minigames #{self.get_period(DURATIONS[q['type']], now).period} — {QUEST_REWARDS[q['type']]}XP each",
                 value="\n".join(
-                    [f"Resets in **{humanfriendly.format_timespan(round(timespan.total_seconds()))}**", *value]
+                    [f"Resets in **{humanfriendly.format_timespan(round(timespan.total_seconds()))}** ({ts})", *value]
                 ),
                 inline=False,
             )
@@ -916,31 +920,34 @@ class Christmas(commands.Cog):
         await self.bot.redis.hdel("db:member", ctx.author.id)
         await ctx.message.add_reaction("✅")
 
-    ## Loop to notify when quests reset
+    ## Event listener to notify on command usage if new quests are available
 
-    @tasks.loop(seconds=20)
-    async def notify_quests(self):
-        quests = self.bot.mongo.Member.find({QUESTS_ID: {"$elemMatch": {"expires": {"$lt": datetime.now()}}}})
-
-        async for member in quests:
-            await asyncio.create_task(self.renew_quests(member))
-            if member.christmas_2023_quests_notify is not False:
-                with contextlib.suppress(discord.HTTPException):
-                    await asyncio.create_task(
-                        self.bot.send_dm(
-                            discord.Object(member.id),
-                            f"You have new {FlavorStrings.pokepass} minigames available! Use {CMD_MINIGAMES.format('@Pokétwo')} to view them! You can disable this notification using {CMD_TOGGLE_NOTIFICATIONS.format('@Pokétwo')}.",
-                        )
-                    )
-
-    @notify_quests.before_loop
-    async def before_notify_loop(self):
-        await self.bot.wait_until_ready()
+    @commands.Cog.listener("on_command")
+    async def notify_quests(self, ctx: PoketwoContext):
+        member = await self.bot.mongo.fetch_member_info(ctx.author)
+        await self.renew_quests(member, ctx=ctx)
 
     ## Utils
 
-    async def renew_quests(self, member: Member):
-        quests = [q for q in member[QUESTS_ID] if datetime.now() < q["expires"]]
+    def get_period(self, duration: timedelta, dt: Optional[datetime] = None) -> QuestPeriod[int, timedelta]:
+        """Returns the provided/current datetime's period (day/week depending on duration) since start and elapsed timedelta"""
+
+        dt = dt or datetime.now()
+        return QuestPeriod(*divmod(dt - QUESTS_START, duration))
+
+    def expires_to_period(self, duration: timedelta, expires: datetime):
+        """Function for backwards compatibility with previous expire-based quests"""
+
+        return self.get_period(duration, expires - duration)
+
+    async def renew_quests(self, member: Member, *, ctx: Optional[PoketwoContext] = None):
+        now = datetime.now()
+        quests = [
+            q
+            for q in member[QUESTS_ID]
+            if (q["period"] if "period" in q else self.expires_to_period(DURATIONS[q["type"]], q["expires"]).period)
+            == self.get_period(DURATIONS[q["type"]], now).period
+        ]
 
         daily_quests = [q for q in quests if q["type"] == "daily"]
         weekly_quests = [q for q in quests if q["type"] == "weekly"]
@@ -953,7 +960,7 @@ class Christmas(commands.Cog):
                         "_id": str(uuid.uuid4()),
                         "progress": 0,
                         "type": "daily",
-                        "expires": datetime.now() + timedelta(days=1),
+                        "period": self.get_period(DURATIONS["daily"], now).period,
                     }
                     for q in random.choices(DAILY_QUESTS, k=5)
                 ]
@@ -967,7 +974,7 @@ class Christmas(commands.Cog):
                         "_id": str(uuid.uuid4()),
                         "progress": 0,
                         "type": "weekly",
-                        "expires": datetime.now() + timedelta(days=7),
+                        "period": self.get_period(DURATIONS["weekly"], now).period,
                     }
                     for q in random.choices(WEEKLY_QUESTS, k=5)
                 ]
@@ -975,13 +982,22 @@ class Christmas(commands.Cog):
 
         if not daily_quests or not weekly_quests:
             await self.bot.mongo.update_member(member, {"$set": {QUESTS_ID: quests}})
+            if ctx and member.christmas_2023_quests_notify is not False:
+                with contextlib.suppress(discord.HTTPException):
+                    await asyncio.create_task(
+                        ctx.reply(
+                            f"You have new {FlavorStrings.pokepass} minigames available! Use {CMD_MINIGAMES.format('@Pokétwo')} to view them!\n\nYou can disable this notification using {CMD_TOGGLE_NOTIFICATIONS.format('@Pokétwo')}.",
+                        )
+                    )
 
         return quests
 
-    async def fetch_quests(self, user: Union[discord.User, discord.Member]) -> List[Dict[str, Any]]:
+    async def fetch_quests(
+        self, user: Union[discord.User, discord.Member], *, ctx: Optional[PoketwoContext] = None
+    ) -> List[Dict[str, Any]]:
         member = await self.bot.mongo.fetch_member_info(user)
 
-        return await self.renew_quests(member)
+        return await self.renew_quests(member, ctx=ctx)
 
     def verify_condition(self, condition: dict, species: Species):
         """Function to verify conditions of a pokemon's species with quest requirements."""
