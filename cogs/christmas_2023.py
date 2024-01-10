@@ -878,7 +878,7 @@ class Christmas(commands.Cog):
                 ts = discord.utils.format_dt(now + timespan)
 
             embed.add_field(
-                name=f"{q['type'].capitalize()} Minigames #{self.get_period(DURATIONS[q['type']], now).period} — {QUEST_REWARDS[q['type']]}XP each",
+                name=f"{q['type'].capitalize()} Minigames #{self.get_period(DURATIONS[q['type']], now).period + 1} — {QUEST_REWARDS[q['type']]}XP each",
                 value="\n".join(
                     [f"Resets in **{humanfriendly.format_timespan(round(timespan.total_seconds()))}** ({ts})", *value]
                 ),
