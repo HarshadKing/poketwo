@@ -515,6 +515,8 @@ class Christmas(commands.Cog):
                 f"""
                 All aboard {FlavorStrings.pokeexpress}, where adventure awaits and joyous cheer fills the air! As the frosty winds whistle through the forests and hills, cosy up inside {FlavorStrings.pokeexpress} with different Pokémon for the most magical journey of all—to the North Pole to see Santa!
                 **Progress the journey by playing various minigames and completing {FlavorStrings.pokepass} levels, collecting gifts and rewards along the way!**
+
+                **This event has now ended. No new minigames will appear, but you can still complete current minigames and open presents.**
                 """
             ),
         )
@@ -755,9 +757,9 @@ class Christmas(commands.Cog):
 
     ## Event handlers
 
-    @commands.Cog.listener("on_catch")
-    async def xp_per_catch(self, ctx, species, id):
-        await self.give_xp(ctx.author, QUEST_REWARDS["catch"])
+    # @commands.Cog.listener("on_catch")
+    # async def xp_per_catch(self, ctx, species, id):
+    #     await self.give_xp(ctx.author, QUEST_REWARDS["catch"])
 
     # PRESENTS
 
@@ -851,7 +853,7 @@ class Christmas(commands.Cog):
             description=(
                 f"Play a diverse selection of minigames and earn XP to level up your {FlavorStrings.pokepass}! "
                 f"Traverse {FlavorStrings.pokeexpress}, play a variety of minigames, and collect various rewards along the way!\n\n"
-                f"Additionally, you'll earn **{QUEST_REWARDS['catch']}XP** for every pokémon you catch!"
+                f"The event has now ended. You will no longer earn XP for every pokémon you catch."
             ),
         )
         embed.set_author(name=str(ctx.author), icon_url=ctx.author.display_avatar.url)
@@ -878,9 +880,9 @@ class Christmas(commands.Cog):
                 ts = discord.utils.format_dt(now + timespan)
 
             embed.add_field(
-                name=f"{q['type'].capitalize()} Minigames #{self.get_period(DURATIONS[q['type']], now).period + 1} — {QUEST_REWARDS[q['type']]}XP each",
+                name=f"""{q['type'].capitalize()} Minigames #{(q["period"] if "period" in q else self.expires_to_period(DURATIONS[q["type"]], q["expires"]).period) + 1} — {QUEST_REWARDS[q['type']]}XP each""",
                 value="\n".join(
-                    [f"Resets in **{humanfriendly.format_timespan(round(timespan.total_seconds()))}** ({ts})", *value]
+                    [f"The event has now ended. No new minigames will appear but you can still complete the current ones.", *value]
                 ),
                 inline=False,
             )
@@ -922,10 +924,10 @@ class Christmas(commands.Cog):
 
     ## Event listener to notify on command usage if new quests are available
 
-    @commands.Cog.listener("on_command")
-    async def notify_quests(self, ctx: PoketwoContext):
-        member = await self.bot.mongo.fetch_member_info(ctx.author)
-        await self.renew_quests(member, ctx=ctx)
+    # @commands.Cog.listener("on_command")
+    # async def notify_quests(self, ctx: PoketwoContext):
+    #     member = await self.bot.mongo.fetch_member_info(ctx.author)
+    #     await self.renew_quests(member, ctx=ctx)
 
     ## Utils
 
@@ -945,50 +947,50 @@ class Christmas(commands.Cog):
         quests = [
             q
             for q in member[QUESTS_ID]
-            if (q["period"] if "period" in q else self.expires_to_period(DURATIONS[q["type"]], q["expires"]).period)
-            == self.get_period(DURATIONS[q["type"]], now).period
+            # if (q["period"] if "period" in q else self.expires_to_period(DURATIONS[q["type"]], q["expires"]).period)
+            # == self.get_period(DURATIONS[q["type"]], now).period
         ]
 
-        daily_quests = [q for q in quests if q["type"] == "daily"]
-        weekly_quests = [q for q in quests if q["type"] == "weekly"]
+        # daily_quests = [q for q in quests if q["type"] == "daily"]
+        # weekly_quests = [q for q in quests if q["type"] == "weekly"]
 
-        if not daily_quests:
-            quests.extend(
-                [
-                    {
-                        **q(),
-                        "_id": str(uuid.uuid4()),
-                        "progress": 0,
-                        "type": "daily",
-                        "period": self.get_period(DURATIONS["daily"], now).period,
-                    }
-                    for q in random.choices(DAILY_QUESTS, k=5)
-                ]
-            )
+        # if not daily_quests:
+        #     quests.extend(
+        #         [
+        #             {
+        #                 **q(),
+        #                 "_id": str(uuid.uuid4()),
+        #                 "progress": 0,
+        #                 "type": "daily",
+        #                 "period": self.get_period(DURATIONS["daily"], now).period,
+        #             }
+        #             for q in random.choices(DAILY_QUESTS, k=5)
+        #         ]
+        #     )
 
-        if not weekly_quests:
-            quests.extend(
-                [
-                    {
-                        **q(),
-                        "_id": str(uuid.uuid4()),
-                        "progress": 0,
-                        "type": "weekly",
-                        "period": self.get_period(DURATIONS["weekly"], now).period,
-                    }
-                    for q in random.choices(WEEKLY_QUESTS, k=5)
-                ]
-            )
+        # if not weekly_quests:
+        #     quests.extend(
+        #         [
+        #             {
+        #                 **q(),
+        #                 "_id": str(uuid.uuid4()),
+        #                 "progress": 0,
+        #                 "type": "weekly",
+        #                 "period": self.get_period(DURATIONS["weekly"], now).period,
+        #             }
+        #             for q in random.choices(WEEKLY_QUESTS, k=5)
+        #         ]
+        #     )
 
-        if not daily_quests or not weekly_quests:
-            await self.bot.mongo.update_member(member, {"$set": {QUESTS_ID: quests}})
-            if ctx and member.christmas_2023_quests_notify is not False:
-                with contextlib.suppress(discord.HTTPException):
-                    await asyncio.create_task(
-                        ctx.reply(
-                            f"You have new {FlavorStrings.pokepass} minigames available! Use {CMD_MINIGAMES.format('@Pokétwo')} to view them!\n\nYou can disable this notification using {CMD_TOGGLE_NOTIFICATIONS.format('@Pokétwo')}.",
-                        )
-                    )
+        # if not daily_quests or not weekly_quests:
+        #     await self.bot.mongo.update_member(member, {"$set": {QUESTS_ID: quests}})
+        #     if ctx and member.christmas_2023_quests_notify is not False:
+        #         with contextlib.suppress(discord.HTTPException):
+        #             await asyncio.create_task(
+        #                 ctx.reply(
+        #                     f"You have new {FlavorStrings.pokepass} minigames available! Use {CMD_MINIGAMES.format('@Pokétwo')} to view them!\n\nYou can disable this notification using {CMD_TOGGLE_NOTIFICATIONS.format('@Pokétwo')}.",
+        #                 )
+        #             )
 
         return quests
 
