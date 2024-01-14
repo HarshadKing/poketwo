@@ -260,6 +260,12 @@ def get_quest_description(quest: dict):
                     description = f"Catch {count} pokémon from the {region.title()} region"
                 elif rarity := condition.get("rarity"):
                     title = "Rare" if isinstance(rarity, (tuple, list)) else rarity.capitalize()
+
+                    # Catching event pokemon not possible anymore
+                    # after the end of the event
+                    if title == "Event":
+                        title = "~~Event~~ Rare"  # Convert to rares
+
                     description = f"Catch {count} {title} pokémon"
                 elif form := condition.get("form"):
                     title = "Regional" if isinstance(form, (tuple, list)) else form.capitalize()
@@ -1011,6 +1017,11 @@ class Christmas(commands.Cog):
                 elif k == "region" and v != species.region:
                     return False
                 elif k in ("rarity", "form"):
+                    # Catching event pokemon not possible anymore
+                    # after the end of the event
+                    if v == "event":
+                        v = RARITIES  # Convert to rares
+
                     if isinstance(v, (tuple, list)):
                         if species.id not in [sid for r in v for sid in getattr(self.bot.data, f"list_{r}")]:
                             return False
