@@ -264,7 +264,7 @@ def get_quest_description(quest: dict):
                     # Catching event pokemon not possible anymore
                     # after the end of the event
                     if title == "Event":
-                        title = "~~Event~~ Rare"  # Convert to rares
+                        title = "(~~Event~~) Rare"  # Convert to rares
 
                     description = f"Catch {count} {title} pokémon"
                 elif form := condition.get("form"):
