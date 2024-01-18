@@ -68,6 +68,37 @@ class Configuration(commands.Cog):
         await ctx.send(embed=embed)
 
     @checks.has_started()
+    @commands.group(invoke_without_command=True)
+    async def togglemention(self, ctx):
+        """Toggle getting mentioned in various cases."""
+
+        return await ctx.send_help(ctx.command)
+
+    @togglemention.command(name="catch", aliases=("catching",))
+    async def catching(self, ctx):
+        """Toggle getting mentioned when catching a pokémon."""
+        member = await self.bot.mongo.fetch_member_info(ctx.author)
+
+        await self.bot.mongo.update_member(ctx.author, {"$set": {"catch_mention": not member.catch_mention}})
+
+        if member.catch_mention:
+            await ctx.send(f"You will no longer receive catch pings.")
+        else:
+            await ctx.send("You will now be pinged on catches.")
+
+    @togglemention.command(name="confirm", aliases=("confirmations", "confirmation"))
+    async def confirmations(self, ctx):
+        """Toggle getting mentioned for confirmation messages."""
+        member = await self.bot.mongo.fetch_member_info(ctx.author)
+
+        await self.bot.mongo.update_member(ctx.author, {"$set": {"confirm_mention": not member.confirm_mention}})
+
+        if member.confirm_mention:
+            await ctx.send(f"You will no longer receive confirmation pings.")
+        else:
+            await ctx.send("You will now be pinged for confirmation messages.")
+
+    @checks.has_started()
     @commands.command()
     async def silence(self, ctx: commands.Context):
         """Silence level up messages for yourself."""

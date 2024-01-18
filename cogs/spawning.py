@@ -420,19 +420,6 @@ class Spawning(commands.Cog):
             await ctx.send(message, allowed_mentions=discord.AllowedMentions.none())
 
     @checks.has_started()
-    @commands.command()
-    async def togglemention(self, ctx):
-        """Toggle getting mentioned when catching a pokémon."""
-        member = await self.bot.mongo.fetch_member_info(ctx.author)
-
-        await self.bot.mongo.update_member(ctx.author, {"$set": {"catch_mention": not member.catch_mention}})
-
-        if member.catch_mention:
-            await ctx.send(f"You will no longer receive catch pings.")
-        else:
-            await ctx.send("You will now be pinged on catches.")
-
-    @checks.has_started()
     @commands.command(aliases=("sh",))
     async def shinyhunt(self, ctx, *, species: str = None):
         """Hunt for a shiny pokémon species."""

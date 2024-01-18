@@ -132,6 +132,9 @@ class Pokemon(commands.Cog):
     @flags.add_flag("--skip", type=int)
     @flags.add_flag("--limit", type=int)
 
+    # Flag to receive ping on response
+    @flags.add_flag("--mention", "--ping", "--p", action="store_true", default=False)
+
     # Rename all
     @checks.has_started()
     @commands.max_concurrency(1, commands.BucketType.user)
@@ -139,6 +142,8 @@ class Pokemon(commands.Cog):
     @flags.command(aliases=("na",))
     async def nickall(self, ctx, **flags):
         """Mass nickname pokémon from your collection."""
+
+        mention_author = flags.get("mention")
 
         nicknameall = " ".join(flags["newname"])
 
@@ -163,7 +168,7 @@ class Pokemon(commands.Cog):
         num = await self.bot.mongo.fetch_pokemon_count(ctx.author, aggregations=aggregations)
 
         if num == 0:
-            return await ctx.send("Found no pokémon matching this search.")
+            return await ctx.reply("Found no pokémon matching this search.", mention_author=mention_author)
 
         # confirm
         if nicknameall is None:
@@ -188,9 +193,9 @@ class Pokemon(commands.Cog):
         )
 
         if nicknameall is None:
-            await ctx.reply(f"Removed nickname for {num} pokémon.")
+            await ctx.reply(f"Removed nickname for {num} pokémon.", mention_author=mention_author)
         else:
-            await ctx.reply(f"Changed nickname to `{nicknameall}` for {num} pokémon.")
+            await ctx.reply(f"Changed nickname to `{nicknameall}` for {num} pokémon.", mention_author=mention_author)
 
     @checks.has_started()
     @checks.is_not_in_trade()
@@ -304,6 +309,9 @@ class Pokemon(commands.Cog):
     @flags.add_flag("--skip", type=int)
     @flags.add_flag("--limit", type=int)
 
+    # Flag to receive ping on response
+    @flags.add_flag("--mention", "--ping", "--p", action="store_true", default=False)
+
     # Rename all
     @checks.has_started()
     @checks.is_not_in_trade()
@@ -318,6 +326,8 @@ class Pokemon(commands.Cog):
     async def favoriteall(self, ctx, **flags):
         """Mass favorite selected pokemon."""
 
+        mention_author = flags.get("mention")
+
         member = await self.bot.mongo.fetch_member_info(ctx.author)
         aggregations = await self.create_filter(flags, ctx, order_by=member.order_by)
 
@@ -331,10 +341,11 @@ class Pokemon(commands.Cog):
         unfavnum = await self.bot.mongo.fetch_pokemon_count(ctx.author, aggregations=aggregations)
 
         if num == 0:
-            return await ctx.send("Found no pokémon matching this search.")
+            return await ctx.reply("Found no pokémon matching this search.", mention_author=mention_author)
         elif unfavnum == 0:
-            return await ctx.send(
-                f"Found no unfavorited pokémon within this selection.\nTo mass unfavorite a pokemon, please use `{ctx.clean_prefix}unfavoriteall`."
+            return await ctx.reply(
+                f"Found no unfavorited pokémon within this selection.\nTo mass unfavorite a pokemon, please use `{ctx.clean_prefix}unfavoriteall`.",
+                mention_author=mention_author
             )
 
         # Fetch pokemon list
@@ -353,7 +364,7 @@ class Pokemon(commands.Cog):
             {"$set": {"favorite": True}},
         )
 
-        await ctx.reply(f"Favorited your {unfavnum} unfavorited pokemon.\nAll {num} selected pokemon are now favorited.")
+        await ctx.reply(f"Favorited your {unfavnum} unfavorited pokemon.\nAll {num} selected pokemon are now favorited.", mention_author=mention_author)
 
     # Filter
     @flags.add_flag("--shiny", action="store_true")
@@ -395,6 +406,9 @@ class Pokemon(commands.Cog):
     @flags.add_flag("--skip", type=int)
     @flags.add_flag("--limit", type=int)
 
+    # Flag to receive ping on response
+    @flags.add_flag("--mention", "--ping", "--p", action="store_true", default=False)
+
     # Rename all
     @checks.has_started()
     @commands.max_concurrency(1, commands.BucketType.user)
@@ -407,6 +421,8 @@ class Pokemon(commands.Cog):
     )
     async def unfavoriteall(self, ctx, **flags):
         """Mass unfavorite selected pokemon."""
+
+        mention_author = flags.get("mention")
 
         member = await self.bot.mongo.fetch_member_info(ctx.author)
         aggregations = await self.create_filter(flags, ctx, order_by=member.order_by)
@@ -441,7 +457,10 @@ class Pokemon(commands.Cog):
             {"$set": {"favorite": False}},
         )
 
-        await ctx.reply(f"Unfavorited your {favnum} favorited pokemon.\nAll {num} selected pokemon are now unfavorited.")
+        await ctx.reply(
+            f"Unfavorited your {favnum} favorited pokemon.\nAll {num} selected pokemon are now unfavorited.",
+            mention_author=mention_author
+        )
 
     @checks.has_started()
     @commands.cooldown(3, 5, commands.BucketType.user)
@@ -819,6 +838,9 @@ class Pokemon(commands.Cog):
     @flags.add_flag("--skip", type=int)
     @flags.add_flag("--limit", type=int)
 
+    # Flag to receive ping on response
+    @flags.add_flag("--mention", "--ping", "--p", action="store_true", default=False)
+
     # Release all
     @checks.has_started()
     @checks.is_not_in_trade()
@@ -827,6 +849,8 @@ class Pokemon(commands.Cog):
     @flags.command(aliases=("ra",))
     async def releaseall(self, ctx, **flags):
         """Mass release pokémon from your collection for 2 pc each."""
+
+        mention_author = flags.get("mention")
 
         member = await self.bot.mongo.fetch_member_info(ctx.author)
         aggregations = await self.create_filter(flags, ctx, order_by=member.order_by)
@@ -846,7 +870,7 @@ class Pokemon(commands.Cog):
         num = await self.bot.mongo.fetch_pokemon_count(ctx.author, aggregations=aggregations)
 
         if num == 0:
-            return await ctx.send("Found no pokémon matching this search (excluding favorited and selected pokémon).")
+            return await ctx.reply("Found no pokémon matching this search (excluding favorited and selected pokémon).", mention_author=mention_author)
 
         # confirm
 
@@ -882,7 +906,8 @@ class Pokemon(commands.Cog):
         )
 
         await ctx.reply(
-            f"You have released {result.modified_count} pokémon. You received {2*result.modified_count:,} Pokécoins!"
+            f"You have released {result.modified_count} pokémon. You received {2*result.modified_count:,} Pokécoins!",
+            mention_author=mention_author
         )
         self.bot.dispatch("release", ctx.author, result.modified_count)
 
@@ -927,12 +952,17 @@ class Pokemon(commands.Cog):
     @flags.add_flag("--skip", type=int)
     @flags.add_flag("--limit", type=int)
 
+    # Flag to receive ping on response
+    @flags.add_flag("--mention", "--ping", "--p", action="store_true", default=False)
+
     # Pokemon
     @checks.has_started()
     @commands.cooldown(1, 5, commands.BucketType.user)
     @flags.command(aliases=("p",))
     async def pokemon(self, ctx, **flags):
         """View or filter the pokémon in your collection."""
+
+        mention_author = flags.get("mention")
 
         if flags["page"] < 1:
             return await ctx.send("Page must be positive!")
@@ -966,7 +996,7 @@ class Pokemon(commands.Cog):
                 per_page=20,
                 count=count,
             ),
-            mention_author=True,
+            mention_author=mention_author,
         )
         pages.current_page = flags["page"] - 1
         self.bot.menus[ctx.author.id] = pages
@@ -974,7 +1004,7 @@ class Pokemon(commands.Cog):
         try:
             await pages.start(ctx)
         except IndexError:
-            await ctx.reply("No pokémon found.")
+            await ctx.reply("No pokémon found.", mention_author=mention_author)
 
     @flags.add_flag("page", nargs="*", type=str, default="1")
     @flags.add_flag("--caught", action="store_true")

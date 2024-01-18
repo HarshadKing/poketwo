@@ -63,11 +63,16 @@ class Market(commands.Cog):
         default="id-",
     )
     @flags.add_flag("--mine", "--listings", action="store_true")
+
+    # Flag to receive ping on response
+    @flags.add_flag("--mention", "--ping", "--p", action="store_true", default=False)
     @checks.has_started()
     @commands.cooldown(3, 8, commands.BucketType.user)
     @market.command(aliases=("s",), cls=flags.FlagCommand)
     async def search(self, ctx, **flags):
         """Search pokémon from the marketplace."""
+
+        mention_author = flags.get("mention")
 
         def map_field(field):
             if field == "_id":
@@ -105,14 +110,14 @@ class Market(commands.Cog):
             ),
             allow_last=False,
             allow_go=False,
-            mention_author=True,
+            mention_author=mention_author,
         )
         self.bot.menus[ctx.author.id] = pages
 
         try:
             await pages.start(ctx)
         except IndexError:
-            await ctx.reply("No listings found.")
+            await ctx.reply("No listings found.", mention_author=mention_author)
 
     @checks.has_started()
     @checks.is_not_in_trade()

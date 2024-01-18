@@ -145,15 +145,26 @@ class PoketwoContext(commands.Context):
         )
 
     async def confirm(
-        self, message=None, *, file=None, embed=None, timeout=40, delete_after=False, cls=ConfirmationView
+        self,
+        message=None,
+        *,
+        file=None,
+        embed=None,
+        timeout=40,
+        delete_after=False,
+        cls=ConfirmationView
     ):
+        mention_author = (await self.bot.mongo.fetch_member_info(self.author)).confirm_mention
+
         view = cls(self, timeout=timeout, delete_after=delete_after)
-        view.message = await self.send(
+        view.message = await self.reply(
             message,
             file=file,
             embed=embed,
             view=view,
-            allowed_mentions=discord.AllowedMentions.none(),
+            allowed_mentions=discord.AllowedMentions(
+                everyone=False, users=False, roles=False, replied_user=mention_author
+            ),
         )
         await view.wait()
         return view.result
@@ -168,12 +179,16 @@ class PoketwoContext(commands.Context):
         delete_after=False,
         cls=SelectView
     ):
+        mention_author = (await self.bot.mongo.fetch_member_info(self.author)).confirm_mention
+
         view = cls(self, options=options, timeout=timeout, delete_after=delete_after)
-        view.message = await self.send(
+        view.message = await self.reply(
             message,
             embed=embed,
             view=view,
-            allowed_mentions=discord.AllowedMentions.none(),
+            allowed_mentions=discord.AllowedMentions(
+                everyone=False, users=False, roles=False, replied_user=mention_author
+            ),
         )
         await view.wait()
         return view.result

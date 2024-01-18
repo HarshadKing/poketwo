@@ -88,7 +88,7 @@ class Trading(commands.Cog):
             await self.bot.redis.rpush(f"cancel_trade:{cluster_id}", user_id)
             return False
 
-    async def send_trade(self, ctx, user: discord.Member):
+    async def send_trade(self, ctx, user: discord.Member, mention_author=False):
         # TODO this code is pretty shit. although it does work
 
         trade = self.bot.trades[user.id]
@@ -306,7 +306,7 @@ class Trading(commands.Cog):
 
         # Send msg
 
-        pages = pagination.ContinuablePages(pagination.FunctionPageSource(num_pages, get_page))
+        pages = pagination.ContinuablePages(pagination.FunctionPageSource(num_pages, get_page), mention_author=mention_author)
         self.bot.menus[a.id] = pages
         self.bot.menus[b.id] = pages
         if menu := trade.get("menu"):
@@ -708,6 +708,9 @@ class Trading(commands.Cog):
     @flags.add_flag("--skip", type=int)
     @flags.add_flag("--limit", type=int)
 
+    # Flag to receive ping on response
+    @flags.add_flag("--mention", "--ping", "--p", action="store_true", default=False)
+
     # Trade add all
     @checks.has_started()
     @commands.guild_only()
@@ -716,6 +719,8 @@ class Trading(commands.Cog):
     @trade.command(aliases=("aa",), cls=flags.FlagCommand)
     async def addall(self, ctx, **flags):
         """Add multiple pokémon to a trade."""
+
+        mention_author = flags.get("mention")
 
         if not await self.is_in_trade(ctx.author):
             return await ctx.send("You're not in a trade!")
@@ -743,7 +748,9 @@ class Trading(commands.Cog):
         num = await self.bot.mongo.fetch_pokemon_count(ctx.author, aggregations=aggregations)
 
         if num == 0:
-            return await ctx.send("Found no pokémon matching this search (excluding favorited and selected pokémon).")
+            return await ctx.reply(
+                "Found no pokémon matching this search (excluding favorited and selected pokémon).", mention_author=mention_author
+            )
 
         # confirm
 
@@ -787,7 +794,7 @@ class Trading(commands.Cog):
             if type(k) == int:
                 self.bot.trades[ctx.author.id][k] = False
 
-        await self.send_trade(ctx, ctx.author)
+        await self.send_trade(ctx, ctx.author, mention_author=mention_author)
 
     @checks.has_started()
     @commands.guild_only()

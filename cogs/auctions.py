@@ -490,11 +490,16 @@ class Auctions(commands.Cog):
     @flags.add_flag("--mine", "--listings", action="store_true")
     @flags.add_flag("--bids", action="store_true")
     @flags.add_flag("--ends", type=converters.to_timedelta)
+
+    # Flag to receive ping on response
+    @flags.add_flag("--mention", "--ping", "--p", action="store_true", default=False)
     @checks.has_started()
     @commands.cooldown(1, 5, commands.BucketType.user)
     @auction.command(aliases=("s",), cls=flags.FlagCommand)
     async def search(self, ctx, **flags):
         """Search pokémon from auctions."""
+
+        mention_author = flags.get("mention")
 
         if flags["page"] < 1:
             return await ctx.send("Page must be positive!")
@@ -548,7 +553,7 @@ class Auctions(commands.Cog):
                 per_page=15,
                 count=count,
             ),
-            mention_author=True,
+            mention_author=mention_author,
         )
         pages.current_page = flags["page"] - 1
         self.bot.menus[ctx.author.id] = pages
@@ -556,7 +561,7 @@ class Auctions(commands.Cog):
         try:
             await pages.start(ctx)
         except IndexError:
-            await ctx.reply("No auctions found.")
+            await ctx.reply("No auctions found.", mention_author=mention_author)
 
     # TODO make all groups case insensitive
 
