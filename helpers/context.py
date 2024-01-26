@@ -154,7 +154,8 @@ class PoketwoContext(commands.Context):
         delete_after=False,
         cls=ConfirmationView
     ):
-        mention_author = (await self.bot.mongo.fetch_member_info(self.author)).confirm_mention
+        member = await self.bot.mongo.fetch_member_info(self.author)
+        mention_author = getattr(member, "confirm_mention", True)
 
         view = cls(self, timeout=timeout, delete_after=delete_after)
         view.message = await self.reply(
@@ -179,7 +180,8 @@ class PoketwoContext(commands.Context):
         delete_after=False,
         cls=SelectView
     ):
-        mention_author = (await self.bot.mongo.fetch_member_info(self.author)).confirm_mention
+        member = await self.bot.mongo.fetch_member_info(self.author)
+        mention_author = getattr(member, "confirm_mention", True)
 
         view = cls(self, options=options, timeout=timeout, delete_after=delete_after)
         view.message = await self.reply(
