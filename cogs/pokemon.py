@@ -1135,11 +1135,8 @@ class Pokemon(commands.Cog):
                 f"**Speed:** {species.base_stats.spd}",
             )
 
-            if species.gender_rate:
-                if species.gender_rate != -1:
-                    gender_rate = f":male_sign: {species.gender_ratios[0]}% - :female_sign: {species.gender_ratios[1]}%"
-                else:
-                    gender_rate = "Gender unknown..."
+            if species.gender_rate and species.gender_rate != -1:
+                gender_rate = f":male_sign: {species.gender_ratios[0]}% - :female_sign: {species.gender_ratios[1]}%"
             else:
                 gender_rate = "Gender unknown..."
 

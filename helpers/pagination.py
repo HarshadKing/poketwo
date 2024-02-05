@@ -121,7 +121,7 @@ class DexButtons(discord.ui.View):
             self.gender_select = GenderRadioGroup(self)
             self.gender_select.add_to_view(self)
         else:
-            self.gender_select = False
+            self.gender_select = None
         self.shiny_select = ShinyRadioGroup(self, is_selected=is_shiny)
         self.shiny_select.add_to_view(self)
 
