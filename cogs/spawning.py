@@ -222,7 +222,7 @@ class Spawning(commands.Cog):
 
         image = None
 
-        gender = genders.generate_gender(species)
+        gender = await genders.generate_gender(species)
 
         if hasattr(self.bot.config, "SERVER_URL"):
             url = urljoin(self.bot.config.SERVER_URL, f"image?species={species.id}&time=")
