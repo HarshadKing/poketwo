@@ -203,7 +203,7 @@ class PokemonBase(MixinDocument):
                 can = False
             if evo.trigger.relative_stats == 0 and self.atk != self.defn:
                 can = False
-            if evo.trigger.gender != self.gender and evo.trigger.gender != None:
+            if evo.trigger.gender and evo.trigger.gender != self.gender:
                 can = False
 
             if can:
