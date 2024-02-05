@@ -479,9 +479,9 @@ class Pokemon(commands.Cog):
                     break
 
             embed = self.bot.Embed(color=pokemon.color or 0x9CCFFF, title=f"{pokemon:lnf}")
-    
+
             image = pokemon.species.shiny_image_url if pokemon.shiny else pokemon.species.image_url
-            if pokemon.species.has_gender_differences == 1 and pokemon.gender == 'Female':
+            if pokemon.species.has_gender_differences == 1 and pokemon.gender == "Female":
                 image = pokemon.species.shiny_image_url_female if pokemon.shiny else pokemon.species.image_url_female
             embed.set_image(url=image)
 
@@ -490,7 +490,7 @@ class Pokemon(commands.Cog):
             info = (
                 f"**XP:** {pokemon.xp}/{pokemon.max_xp}",
                 f"**Nature:** {pokemon.nature}",
-                f"**Gender:** {pokemon.gender}"
+                f"**Gender:** {pokemon.gender}",
             )
 
             embed.add_field(name="Details", value="\n".join(info), inline=False)
@@ -700,7 +700,6 @@ class Pokemon(commands.Cog):
         mons = list()
 
         for pokemon in args:
-
             if pokemon is not None:
                 # can't release selected/fav
 
@@ -1033,7 +1032,9 @@ class Pokemon(commands.Cog):
 
                 # Send embed
 
-                embed = self.bot.Embed(title=f"Your pokédex", description=f"You've caught {num} out of {total_count} pokémon!")
+                embed = self.bot.Embed(
+                    title=f"Your pokédex", description=f"You've caught {num} out of {total_count} pokémon!"
+                )
 
                 embed.set_footer(text=f"Showing {pgstart + 1}–{pgend} out of {len(pokedex)}.")
 
@@ -1115,10 +1116,15 @@ class Pokemon(commands.Cog):
                 embed.add_field(name="Evolution", value=species.evolution_text, inline=False)
 
             if shiny:
-                embed.title = f"#{species.dex_number} — ✨ {species}"
+                embed.title = f"#{species.dex_number} — {species} ✨"
                 embed.set_image(url=species.shiny_image_url)
+                is_shiny = True
             else:
                 embed.set_image(url=species.image_url)
+                is_shiny = False
+
+            # Ads the correct button settings to the embed
+            view = pagination.DexButtons(ctx, embed=embed, species=species, is_shiny=is_shiny)
 
             base_stats = (
                 f"**HP:** {species.base_stats.hp}",
@@ -1129,6 +1135,11 @@ class Pokemon(commands.Cog):
                 f"**Speed:** {species.base_stats.spd}",
             )
 
+            if species.gender_rate and species.gender_rate != -1:
+                gender_rate = f":male_sign: {species.gender_ratios[0]}% - :female_sign: {species.gender_ratios[1]}%"
+            else:
+                gender_rate = "Gender unknown..."
+
             embed.add_field(name="Types", value="\n".join(species.types))
             embed.add_field(name="Region", value=species.region.title())
             embed.add_field(name="Catchable", value="Yes" if species.catchable else "No")
@@ -1136,6 +1147,7 @@ class Pokemon(commands.Cog):
             embed.add_field(name="Base Stats", value="\n".join(base_stats))
             embed.add_field(name="Names", value="\n".join(f"{x} {y}" for x, y in species.names))
             embed.add_field(name="Appearance", value=f"Height: {species.height} m\nWeight: {species.weight} kg")
+            embed.add_field(name="Gender Ratio", value=f"{gender_rate}")
 
             text = "You haven't caught this pokémon yet!"
             if str(species.dex_number) in member.pokedex:
@@ -1146,7 +1158,7 @@ class Pokemon(commands.Cog):
 
             embed.set_footer(text=text)
 
-            await ctx.send(embed=embed)
+            await ctx.send(embed=embed, view=view)
 
     @checks.has_started()
     @commands.guild_only()
