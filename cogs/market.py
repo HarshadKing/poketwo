@@ -1,4 +1,6 @@
 import asyncio
+import contextlib
+import discord
 
 from discord.ext import commands
 
@@ -292,16 +294,16 @@ class Market(commands.Cog):
             return await ctx.send("You don't have enough Pokécoins for that!")
 
         await self.bot.mongo.update_member(listing["owner_id"], {"$inc": {"balance": listing["market_data"]["price"]}})
-        await ctx.send(
-            f"You purchased a **{pokemon.iv_percentage:.2%} {pokemon.species}** from the market for {listing['market_data']['price']} Pokécoins. Do `{ctx.clean_prefix}info latest` to view it!"
-        )
-
-        self.bot.loop.create_task(
-            self.bot.send_dm(
-                listing["owner_id"],
-                f"Someone purchased your **{pokemon.iv_percentage:.2%} {pokemon.species}** from the market. You received {listing['market_data']['price']:,} Pokécoins!",
+        with contextlib.suppress(discord.HTTPException):
+            await ctx.send(
+                f"You purchased a **{pokemon.iv_percentage:.2%} {pokemon.species}** from the market for {listing['market_data']['price']} Pokécoins. Do `{ctx.clean_prefix}info latest` to view it!"
             )
-        )
+            self.bot.loop.create_task(
+                self.bot.send_dm(
+                    listing["owner_id"],
+                    f"Someone purchased your **{pokemon.iv_percentage:.2%} {pokemon.species}** from the market. You received {listing['market_data']['price']:,} Pokécoins!",
+                )
+            )
 
         self.bot.dispatch("market_buy", ctx.author, listing)
 
