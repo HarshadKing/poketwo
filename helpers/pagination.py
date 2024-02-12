@@ -112,13 +112,13 @@ class ContinuablePages(ViewMenuPages):
 
 
 class DexButtons(discord.ui.View):
-    def __init__(self, ctx, embed, species, is_shiny):
+    def __init__(self, ctx, embed, species, is_shiny, gender):
         super().__init__()
         self.embed = embed
         self.ctx = ctx
         self.species = species
         if species.has_gender_differences == 1:
-            self.gender_select = GenderRadioGroup(self)
+            self.gender_select = GenderRadioGroup(self, gender)
             self.gender_select.add_to_view(self)
         else:
             self.gender_select = None
@@ -147,11 +147,12 @@ class DexButtons(discord.ui.View):
 
 
 class GenderRadioGroup(radio.RadioGroup):
-    def __init__(self, view: DexButtons):
+    def __init__(self, view: DexButtons, gender):
         super().__init__()
         self.view = view
-        self.add_option("", "male", is_selected=True, emoji="<:male:1206601832189657169>")
-        self.add_option("", "female", emoji="<:female:1206601874225102868>")
+        male_selected = True if gender == "Male" else False
+        self.add_option("", "male", is_selected=male_selected, emoji="<:male:1206601832189657169>")
+        self.add_option("", "female", is_selected=not male_selected, emoji="<:female:1206601874225102868>")
 
     async def callback(self, interaction, button):
         super().callback(interaction, button)

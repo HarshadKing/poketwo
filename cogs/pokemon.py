@@ -1084,6 +1084,7 @@ class Pokemon(commands.Cog):
 
         else:
             shiny = False
+            gender = "Male"
 
             if search_or_page[0] in "Nn#" and search_or_page[1:].isdigit():
                 species = self.bot.data.species_by_number(int(search_or_page[1:]))
@@ -1095,9 +1096,16 @@ class Pokemon(commands.Cog):
                     shiny = True
                     search = search_or_page[6:]
 
+                if "female" in search.lower():
+                    gender = "Female"
+                    search = search.lower().replace("female ", "")
+
                 species = self.bot.data.species_by_name(search)
                 if species is None:
                     return await ctx.send(f"Could not find a pokemon matching `{search_or_page}`.")
+
+                if species.has_gender_differences == 0:
+                    gender = "Male"
 
             member = await self.bot.mongo.fetch_pokedex(ctx.author, species.dex_number, species.dex_number + 1)
 
@@ -1130,14 +1138,16 @@ class Pokemon(commands.Cog):
 
             if shiny:
                 embed.title = f"#{species.dex_number} — {species} ✨"
-                embed.set_image(url=species.shiny_image_url)
+                image_url = species.shiny_image_url_female if gender == "Female" else species.shiny_image_url
+                embed.set_image(url=image_url)
                 is_shiny = True
             else:
-                embed.set_image(url=species.image_url)
+                image_url = species.image_url_female if gender == "Female" else species.image_url
+                embed.set_image(url=image_url)
                 is_shiny = False
 
             # Ads the correct button settings to the embed
-            view = pagination.DexButtons(ctx, embed=embed, species=species, is_shiny=is_shiny)
+            view = pagination.DexButtons(ctx, embed=embed, species=species, is_shiny=is_shiny, gender=gender)
 
             base_stats = (
                 f"**HP:** {species.base_stats.hp}",
