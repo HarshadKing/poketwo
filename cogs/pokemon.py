@@ -925,7 +925,11 @@ class Pokemon(commands.Cog):
             menu.maxn = max(x.idx for x in items)
 
         def format_item(menu, p):
-            gender_icon = "♂" if p.gender == "Male" else "♀" if p.gender == "Female" else "?"
+            gender_icon = (
+                "<:male:1206601832189657169>"
+                if p.gender == "Male"
+                else "<:female:1206601874225102868>" if p.gender == "Female" else "<:unknown:1206601918894313472>"
+            )
             return f"`{padn(p, menu.maxn)}`　**{p:nif}**　•　Lvl. {p.level} {gender_icon}　•　{p.iv_total / 186:.2%}"
 
         count = await self.bot.mongo.fetch_pokemon_count(ctx.author, aggregations)
