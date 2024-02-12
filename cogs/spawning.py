@@ -234,7 +234,8 @@ class Spawning(commands.Cog):
                     embed.set_image(url="attachment://pokemon.jpg")
 
         if image is None:
-            image = discord.File(f"data/images/{species.id}.png", filename="pokemon.png")
+            path = f"data/images/{species.id}F.png" if gender == "Female" else f"data/images/{species.id}.png"
+            image = discord.File(path, filename="pokemon.png")
             embed.set_image(url="attachment://pokemon.png")
 
         if incense:
@@ -455,9 +456,11 @@ class Spawning(commands.Cog):
 
             embed.add_field(
                 name=f"Currently Hunting",
-                value=self.bot.data.species_by_number(member.shiny_hunt).name
-                if member.shiny_hunt
-                else f"Type `{ctx.clean_prefix}shinyhunt <pokémon>` to begin!",
+                value=(
+                    self.bot.data.species_by_number(member.shiny_hunt).name
+                    if member.shiny_hunt
+                    else f"Type `{ctx.clean_prefix}shinyhunt <pokémon>` to begin!"
+                ),
             )
 
             if member.shiny_hunt:

@@ -150,8 +150,8 @@ class GenderRadioGroup(radio.RadioGroup):
     def __init__(self, view: DexButtons):
         super().__init__()
         self.view = view
-        self.add_option("\N{MALE SIGN}\N{VARIATION SELECTOR-16}", "male", is_selected=True)
-        self.add_option("\N{FEMALE SIGN}\N{VARIATION SELECTOR-16}", "female")
+        self.add_option("", "male", is_selected=True, emoji="<:male:1206601832189657169>")
+        self.add_option("", "female", emoji="<:female:1206601874225102868>")
 
     async def callback(self, interaction, button):
         super().callback(interaction, button)

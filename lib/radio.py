@@ -2,7 +2,6 @@ import discord
 
 
 class RadioGroup:
-
     """A group of buttons that can be selected, with one selected at a time.
     Parameters
     ----------
@@ -48,8 +47,10 @@ class RadioGroup:
             button.style = self.selected_style
         self._selected = button
 
-    def add_option(self, label: str, value: str, *, is_selected: bool = False) -> Button:
+    def add_option(self, label: str, value: str, *, is_selected: bool = False, emoji: str = None) -> Button:
         button = self.Button(label=label, group=self, value=value)
+        if emoji:
+            button.emoji = emoji
         self._buttons.append(button)
         if is_selected:
             self.select(button)
