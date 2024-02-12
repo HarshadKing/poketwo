@@ -1149,7 +1149,7 @@ class Pokemon(commands.Cog):
             )
 
             if species.gender_rate and species.gender_rate != -1:
-                gender_rate = f":male_sign: {species.gender_ratios[0]}% - :female_sign: {species.gender_ratios[1]}%"
+                gender_rate = f"<:male:1206601832189657169> {species.gender_ratios[0]}% - <:female:1206601874225102868> {species.gender_ratios[1]}%"
             else:
                 gender_rate = "Gender unknown..."
 
