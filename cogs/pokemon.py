@@ -108,6 +108,7 @@ class Pokemon(commands.Cog):
     @flags.add_flag("--nickname", nargs="*", action="append")
     @flags.add_flag("--type", "--t", type=str, action="append")
     @flags.add_flag("--region", "--r", type=str, action="append")
+    @flags.add_flag("--gender", "--g", type=str, action="append")
 
     # IV
     @flags.add_flag("--level", nargs="+", action="append")
@@ -286,6 +287,7 @@ class Pokemon(commands.Cog):
     @flags.add_flag("--nickname", nargs="*", action="append")
     @flags.add_flag("--type", "--t", type=str, action="append")
     @flags.add_flag("--region", "--r", type=str, action="append")
+    @flags.add_flag("--gender", "--g", type=str, action="append")
 
     # IV
     @flags.add_flag("--level", nargs="+", action="append")
@@ -373,6 +375,7 @@ class Pokemon(commands.Cog):
     @flags.add_flag("--nickname", nargs="*", action="append")
     @flags.add_flag("--type", "--t", type=str, action="append")
     @flags.add_flag("--region", "--r", type=str, action="append")
+    @flags.add_flag("--gender", "--g", type=str, action="append")
 
     # IV
     @flags.add_flag("--level", nargs="+", action="append")
@@ -632,6 +635,9 @@ class Pokemon(commands.Cog):
         if "ends" in flags and flags["ends"] is not None:
             aggregations.append({"$match": {"auction_data.ends": {"$lt": datetime.utcnow() + flags["ends"]}}})
 
+        if "gender" in flags and flags["gender"]:
+            aggregations.append({"$match": {map_field("gender"): flags["gender"][0].capitalize()}})
+
         # Numerical flags
 
         for flag, expr in constants.FILTER_BY_NUMERICAL.items():
@@ -774,6 +780,7 @@ class Pokemon(commands.Cog):
     @flags.add_flag("--nickname", nargs="*", action="append")
     @flags.add_flag("--type", "--t", type=str, action="append")
     @flags.add_flag("--region", "--r", type=str, action="append")
+    @flags.add_flag("--gender", "--g", type=str, action="append")
 
     # IV
     @flags.add_flag("--level", nargs="+", action="append")
@@ -879,6 +886,7 @@ class Pokemon(commands.Cog):
     @flags.add_flag("--nickname", nargs="*", action="append")
     @flags.add_flag("--type", "--t", type=str, action="append")
     @flags.add_flag("--region", "--r", type=str, action="append")
+    @flags.add_flag("--gender", "--g", type=str, action="append")
 
     # IV
     @flags.add_flag("--level", nargs="+", action="append")
