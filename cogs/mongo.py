@@ -364,6 +364,9 @@ class Member(Document):
     christmas_2023_quests = fields.ListField(fields.DictField(), default=list)
     christmas_2023_quests_notify = fields.BooleanField(default=True)
 
+    valentines_2024_catches = fields.IntegerField(default=0)
+    valentines_2024_boxes = fields.IntegerField(default=0)
+
     @property
     def selected_pokemon(self):
         try:
