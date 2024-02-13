@@ -375,3 +375,9 @@ URL_REGEX = re.compile(r"(([a-z]{3,6}://)|(^|\s))([a-zA-Z0-9\-]+\.)+[a-z]{2,13}[
 
 PINK = 0xFE9AC9
 BLUE = 0x9CCFFF
+
+GENDER_EMOTES = {
+    "male": "<:male:1206601832189657169>",
+    "female": "<:female:1206601874225102868>",
+    "unknown": "<:unknown:1206601918894313472>",
+}

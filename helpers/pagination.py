@@ -1,6 +1,7 @@
 from typing import Optional
 import discord
 import math
+from helpers import constants
 
 from discord.ext import menus
 from discord.ext.menus.views import ViewMenuPages
@@ -151,8 +152,8 @@ class GenderRadioGroup(radio.RadioGroup):
         super().__init__()
         self.view = view
         male_selected = True if gender == "Male" else False
-        self.add_option("", "male", is_selected=male_selected, emoji="<:male:1206601832189657169>")
-        self.add_option("", "female", is_selected=not male_selected, emoji="<:female:1206601874225102868>")
+        self.add_option("", "male", is_selected=male_selected, emoji=constants.GENDER_EMOTES["male"])
+        self.add_option("", "female", is_selected=not male_selected, emoji=constants.GENDER_EMOTES["female"])
 
     async def callback(self, interaction, button):
         super().callback(interaction, button)

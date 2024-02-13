@@ -934,9 +934,9 @@ class Pokemon(commands.Cog):
 
         def format_item(menu, p):
             gender_icon = (
-                "<:male:1206601832189657169>"
+                constants.GENDER_EMOTES["male"]
                 if p.gender == "Male"
-                else "<:female:1206601874225102868>" if p.gender == "Female" else "<:unknown:1206601918894313472>"
+                else constants.GENDER_EMOTES["female"] if p.gender == "Female" else constants.GENDER_EMOTES["unknown"]
             )
             return f"`{padn(p, menu.maxn)}`　**{p:nif}**　•　Lvl. {p.level} {gender_icon}　•　{p.iv_total / 186:.2%}"
 
@@ -1159,7 +1159,7 @@ class Pokemon(commands.Cog):
             )
 
             if species.gender_rate and species.gender_rate != -1:
-                gender_rate = f"<:male:1206601832189657169> {species.gender_ratios[0]}% - <:female:1206601874225102868> {species.gender_ratios[1]}%"
+                gender_rate = f"{constants.GENDER_EMOTES['male']} {species.gender_ratios[0]}% - {constants.GENDER_EMOTES['female']} { species.gender_ratios[1]}%"
             else:
                 gender_rate = "Gender unknown..."
 
