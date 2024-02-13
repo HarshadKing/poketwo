@@ -9,6 +9,7 @@ from discord.ext import commands, tasks
 
 from cogs import mongo
 from data import models
+from data.constants import GENDER_IMAGE_SUFFIXES
 from helpers import checks
 from helpers import genders
 from helpers.utils import write_fp
@@ -225,16 +226,22 @@ class Spawning(commands.Cog):
         gender = await genders.generate_gender(species)
 
         if hasattr(self.bot.config, "SERVER_URL"):
-            url = urljoin(self.bot.config.SERVER_URL, f"image?species={species.id}&time=")
-            url += "day" if guild.is_day else "night"
-            async with self.bot.http_session.get(url) as resp:
+            time = "day" if guild.is_day else "night"
+            url = urljoin(self.bot.config.SERVER_URL, f"image")
+            params = {
+                "species": str(species.id),
+                "time": time,
+                "gender": gender,
+            }
+            async with self.bot.http_session.get(url, params=params) as resp:
                 if resp.status == 200:
                     arr = await self.bot.loop.run_in_executor(None, write_fp, await resp.read())
                     image = discord.File(arr, filename="pokemon.jpg")
                     embed.set_image(url="attachment://pokemon.jpg")
 
         if image is None:
-            path = f"data/images/{species.id}F.png" if gender == "Female" else f"data/images/{species.id}.png"
+            gender_suffix = GENDER_IMAGE_SUFFIXES.get(gender.lower(), "")
+            path = f"data/images/{species.id}{gender_suffix}.png"
             image = discord.File(path, filename="pokemon.png")
             embed.set_image(url="attachment://pokemon.png")
 
