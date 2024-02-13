@@ -292,6 +292,8 @@ class Battle:
                 "hp1": t1.selected.hp / t1.selected.max_hp,
                 "shiny0": 1 if t0.selected.shiny else 0,
                 "shiny1": 1 if t1.selected.shiny else 0,
+                "gender0": t0.selected.gender,
+                "gender1": t1.selected.gender,
                 "ball0": [0 if p.hp == 0 else 1 for p in t0.pokemon],
                 "ball1": [0 if p.hp == 0 else 1 for p in t1.pokemon],
                 "v": 100,
