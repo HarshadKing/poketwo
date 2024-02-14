@@ -57,7 +57,7 @@ class PokemonBase(MixinDocument):
     xp = fields.IntegerField(required=True)
     nature = fields.StringField(required=True)
     shiny = fields.BooleanField(required=True)
-    gender = fields.StringField(default="Unknown")
+    _gender = fields.StringField(attribute="gender", default=None)
 
     # Stats
     iv_hp = fields.IntegerField(required=True)
@@ -138,6 +138,13 @@ class PokemonBase(MixinDocument):
     @property
     def species(self):
         return self.bot.data.species_by_number(self.species_id)
+
+    @property
+    def gender(self) -> str:
+        gender = self._gender
+        if gender is None:
+            gender = generate_gender(self.species, objectid=self.id)
+        return gender
 
     @property
     def gender_icon(self):
