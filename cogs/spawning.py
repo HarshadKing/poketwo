@@ -332,38 +332,13 @@ class Spawning(commands.Cog):
 
         member = await self.bot.mongo.fetch_member_info(ctx.author)
 
-        shiny = member.determine_shiny(species)
-        level = min(max(int(random.normalvariate(20, 10)), 1), 100)
-        moves = [x.move.id for x in species.moves if level >= x.method.level]
-        random.shuffle(moves)
-
-        ivs = [mongo.random_iv() for i in range(6)]
-
-        r = await self.bot.mongo.db.pokemon.insert_one(
-            {
-                "owner_id": ctx.author.id,
-                "owned_by": "user",
-                "species_id": species.id,
-                "level": level,
-                "xp": 0,
-                "nature": mongo.random_nature(),
-                "iv_hp": ivs[0],
-                "iv_atk": ivs[1],
-                "iv_defn": ivs[2],
-                "iv_satk": ivs[3],
-                "iv_sdef": ivs[4],
-                "iv_spd": ivs[5],
-                "iv_total": sum(ivs),
-                "moves": moves[:4],
-                "shiny": shiny,
-                "gender": gender,
-                "idx": await self.bot.mongo.fetch_next_idx(ctx.author),
-            }
-        )
-        if shiny:
+        pokemon = await self.bot.mongo.make_pokemon(member, species, gender=gender)
+        pokemon_obj = self.bot.mongo.Pokemon.build_from_mongo(pokemon)
+        r = await self.bot.mongo.db.pokemon.insert_one(pokemon)
+        if pokemon_obj.shiny:
             await self.bot.mongo.update_member(ctx.author, {"$inc": {"shinies_caught": 1}})
 
-        message = f"Congratulations {ctx.author.mention}! You caught a level {level} {species}!"
+        message = f"Congratulations {ctx.author.mention}! You caught a {pokemon_obj:lnPg!s}!"
 
         memberp = await self.bot.mongo.fetch_pokedex(ctx.author, species.dex_number, species.dex_number + 1)
 
@@ -409,14 +384,14 @@ class Spawning(commands.Cog):
             )
 
         if member.shiny_hunt == species.dex_number:
-            if shiny:
+            if pokemon_obj.shiny:
                 message += f"\n\nShiny streak reset. (**{member.shiny_streak + 1}**)"
                 await self.bot.mongo.update_member(ctx.author, {"$set": {"shiny_streak": 0}})
             else:
                 message += f"\n\n+1 Shiny chain! (**{member.shiny_streak + 1}**)"
                 await self.bot.mongo.update_member(ctx.author, {"$inc": {"shiny_streak": 1}})
 
-        if shiny:
+        if pokemon_obj.shiny:
             message += "\n\nThese colors seem unusual... ✨"
 
         await self.bot.redis.delete(f"redeem:{ctx.channel.id}")

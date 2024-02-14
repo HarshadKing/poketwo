@@ -147,26 +147,8 @@ class Administration(commands.Cog):
         if species is None:
             return await ctx.send(f"Could not find a pokemon matching `{arg}`.")
 
-        ivs = [mongo.random_iv() for i in range(6)]
-
         await self.bot.mongo.db.pokemon.insert_one(
-            {
-                "owner_id": user.id,
-                "owned_by": "user",
-                "species_id": species.id,
-                "level": 1,
-                "xp": 0,
-                "nature": mongo.random_nature(),
-                "iv_hp": ivs[0],
-                "iv_atk": ivs[1],
-                "iv_defn": ivs[2],
-                "iv_satk": ivs[3],
-                "iv_sdef": ivs[4],
-                "iv_spd": ivs[5],
-                "iv_total": sum(ivs),
-                "shiny": shiny,
-                "idx": await self.bot.mongo.fetch_next_idx(user),
-            }
+            await self.bot.mongo.make_pokemon(user, species, shiny=shiny)
         )
 
         await ctx.send(f"Gave **{user}** a {species}.")
@@ -182,26 +164,9 @@ class Administration(commands.Cog):
         idx = await self.bot.mongo.fetch_next_idx(user, reserve=num)
 
         for i in range(num):
-            spid = random.randint(1, 905)
-            ivs = [mongo.random_iv() for i in range(6)]
+            species = self.bot.data.species_by_number(random.randint(1, 905))
             pokemon.append(
-                {
-                    "owner_id": user.id,
-                    "owned_by": "user",
-                    "species_id": spid,
-                    "level": 80,
-                    "xp": 0,
-                    "nature": mongo.random_nature(),
-                    "iv_hp": ivs[0],
-                    "iv_atk": ivs[1],
-                    "iv_defn": ivs[2],
-                    "iv_satk": ivs[3],
-                    "iv_sdef": ivs[4],
-                    "iv_spd": ivs[5],
-                    "iv_total": sum(ivs),
-                    "shiny": False,
-                    "idx": idx + i,
-                }
+                await self.bot.mongo.make_pokemon(user, species, idx=idx+i)
             )
 
         await self.bot.mongo.db.pokemon.insert_many(pokemon)

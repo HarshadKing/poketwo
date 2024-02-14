@@ -76,10 +76,6 @@ class Valentines(commands.Cog):
         # Go
 
         species = self.bot.data.species_by_number(50058)
-        shiny = user_data.determine_shiny(species)
-        level = min(max(int(random.normalvariate(20, 10)), 1), 100)
-
-        ivs = [mongo.random_iv() for i in range(6)]
 
         author_data = await self.bot.mongo.fetch_member_info(ctx.author)
         if author_data.balance < price:
@@ -89,25 +85,7 @@ class Valentines(commands.Cog):
         await self.bot.mongo.update_member(ctx.author, {"$inc": {"balance": -price, "valentines_purchased": 1}})
 
         await self.bot.mongo.db.pokemon.insert_one(
-            {
-                "owner_id": user.id,
-                "owned_by": "user",
-                "species_id": species.id,
-                "level": level,
-                "xp": 0,
-                "nature": mongo.random_nature(),
-                "iv_hp": ivs[0],
-                "iv_atk": ivs[1],
-                "iv_defn": ivs[2],
-                "iv_satk": ivs[3],
-                "iv_sdef": ivs[4],
-                "iv_spd": ivs[5],
-                "iv_total": sum(ivs),
-                "moves": [],
-                "shiny": shiny,
-                "idx": await self.bot.mongo.fetch_next_idx(user),
-                "nickname": f"Gift from {ctx.author}",
-            }
+            await self.bot.mongo.make_pokemon(user, species, nickname=f"Gift from {ctx.author}")
         )
 
         embed = discord.Embed(

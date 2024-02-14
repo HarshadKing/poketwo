@@ -2,6 +2,7 @@ import math
 import pickle
 import random
 from datetime import datetime, timedelta, timezone
+from typing import Any, Optional
 
 import discord
 import pymongo
@@ -13,11 +14,22 @@ from umongo import Document, EmbeddedDocument, Instance, MixinDocument, fields
 
 from data import models
 from helpers import constants
+from helpers.genders import generate_gender
+from lib.probability import random_iv_composition
+
 
 random_iv = lambda: random.randint(0, 31)
 random_nature = lambda: random.choice(constants.NATURES)
 
 # Instance
+
+
+def iv_percent_to_total(percent: float) -> int:
+    return math.ceil(percent / 100 * 186)
+
+
+def iv_total_to_percent(total_iv: int, *, round_to: Optional[int] = 2) -> float:
+    return round(total_iv / 186 * 100, round_to)
 
 
 def calc_stat(pokemon, stat):
@@ -70,7 +82,7 @@ class PokemonBase(MixinDocument):
     stages = None
 
     def __format__(self, spec):
-        if self.shiny:
+        if self.shiny and "!s" not in spec:
             name = "✨ "
         else:
             name = ""
@@ -92,6 +104,9 @@ class PokemonBase(MixinDocument):
 
         if "g" in spec:
             name += f" {self.gender_icon}"
+
+        if "P" in spec:
+            name += f" ({self.iv_percentage:.2%})"
 
         if self.nickname is not None and "n" in spec:
             name += f' "{self.nickname}"'
@@ -584,6 +599,79 @@ class Mongo(commands.Cog):
             return 0
 
         return result[0]["result"]
+
+    async def make_pokemon(
+        self,
+        member: discord.User | discord.Member | Member,
+        species: models.Species,
+        *,
+        shiny_boost: Optional[int] = 1,
+        min_iv_percent: Optional[float] = 0,  # Minimum IV percentage 0-100
+        max_iv_percent: Optional[float] = 100,  # Maximum IV percentage 0-100,
+        **kwargs,
+    ) -> dict[str, Any]:
+        """Function to build a pokémon.
+
+        Parameters
+        ----------
+        member : cogs.mongo.Member
+            The Member mongo Document object representing a member.
+            Used to determine shiny and idx.
+        species : data.models.Species
+            The species that the pokémon shousld be.
+        shiny_boost : int
+            How much to boost the shiny chance by (default 1).
+        min_iv_percent : float
+            Minimum total IV the pokémon should have (default 0).
+        max_iv_percent : float
+            Maximum total IV the pokémon should have (default 100).
+        **kwargs
+            Any other attribute of the pokémon can be passed in.
+            E.g. shiny=True to guarantee shiny.
+
+        Returns
+        -------
+        dict[str, Any]
+            The dict containing all the data of the new pokémon, which can
+            then be inserted into the database using `collection.insert`.
+        """
+
+        if (not isinstance(member, Member)) and hasattr(member, "id"):
+            member = await self.fetch_member_info(member)
+
+        ivs = [random_iv() for _ in range(6)]
+        if min_iv_percent > 0 or max_iv_percent < 100:
+            min_iv = iv_percent_to_total(min_iv_percent)
+            max_iv = iv_percent_to_total(max_iv_percent)
+            ivs = random_iv_composition(sum_lower_bound=min_iv, sum_upper_bound=max_iv)
+
+        level = min(max(int(random.normalvariate(20, 10)), 1), 50)
+        shiny = member.determine_shiny(species, boost=shiny_boost)
+        gender = generate_gender(species)
+
+        possible_moves = [x.move.id for x in species.moves if level >= x.method.level]
+        moves = random.sample(possible_moves, k=min(len(possible_moves), 4))
+
+        return {
+            "owner_id": int(member.id),
+            "owned_by": "user",
+            "species_id": species.id,
+            "level": level,
+            "xp": 0,
+            "nature": random_nature(),
+            "iv_hp": ivs[0],
+            "iv_atk": ivs[1],
+            "iv_defn": ivs[2],
+            "iv_satk": ivs[3],
+            "iv_sdef": ivs[4],
+            "iv_spd": ivs[5],
+            "iv_total": sum(ivs),
+            "shiny": shiny,
+            "gender": gender,
+            "moves": moves,
+            "idx": kwargs.pop("idx", await self.fetch_next_idx(member)),
+            **kwargs,
+        }
 
     async def update_member(self, member, update):
         if hasattr(member, "id"):

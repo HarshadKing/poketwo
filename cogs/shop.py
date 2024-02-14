@@ -146,13 +146,7 @@ class Shop(commands.Cog):
 
                 random.shuffle(ivs)
 
-                pokemon = {
-                    "owner_id": ctx.author.id,
-                    "owned_by": "user",
-                    "species_id": species.id,
-                    "level": level,
-                    "xp": 0,
-                    "nature": mongo.random_nature(),
+                iv_fields = {
                     "iv_hp": ivs[0],
                     "iv_atk": ivs[1],
                     "iv_defn": ivs[2],
@@ -160,9 +154,9 @@ class Shop(commands.Cog):
                     "iv_sdef": ivs[4],
                     "iv_spd": ivs[5],
                     "iv_total": sum(ivs),
-                    "shiny": shiny,
-                    "idx": await self.bot.mongo.fetch_next_idx(ctx.author),
                 }
+
+                pokemon = await self.bot.mongo.make_pokemon(member, species, level=level, shiny=shiny, **iv_fields)
 
                 text.append(f"{self.bot.mongo.Pokemon.build_from_mongo(pokemon):lni} ({sum(ivs) / 186:.2%} IV)")
 
