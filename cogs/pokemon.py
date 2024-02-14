@@ -1161,7 +1161,7 @@ class Pokemon(commands.Cog):
             if species.gender_rate and species.gender_rate != -1:
                 gender_rate = f"{constants.GENDER_EMOTES['male']} {species.gender_ratios[0]}% - {constants.GENDER_EMOTES['female']} { species.gender_ratios[1]}%"
             else:
-                gender_rate = "Gender unknown..."
+                gender_rate = "Gender unknown"
 
             embed.add_field(name="Types", value="\n".join(species.types))
             embed.add_field(name="Region", value=species.region.title())
