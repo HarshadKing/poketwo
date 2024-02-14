@@ -1,7 +1,7 @@
 import random
 
 
-async def generate_gender(species):
+def generate_gender(species):
     if species.gender_rate == -1:
         gender = "Unknown"
     else:

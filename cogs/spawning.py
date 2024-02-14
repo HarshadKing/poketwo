@@ -223,7 +223,7 @@ class Spawning(commands.Cog):
 
         image = None
 
-        gender = await genders.generate_gender(species)
+        gender = genders.generate_gender(species)
 
         if hasattr(self.bot.config, "SERVER_URL"):
             time = "day" if guild.is_day else "night"
