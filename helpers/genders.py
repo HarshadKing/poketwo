@@ -1,12 +1,12 @@
 import random
-from typing import Optional
+from typing import Literal, Optional
 
 from bson.objectid import ObjectId
 
 from data.models import Species
 
 
-def generate_gender(species: Species, *, objectid: Optional[ObjectId] = None) -> str:
+def generate_gender(species: Species, *, objectid: Optional[ObjectId] = None) -> Literal["Unknown", "Male", "Female"]:
     """Generates gender weighted by its species' gender data.
 
     Parameters
@@ -16,6 +16,11 @@ def generate_gender(species: Species, *, objectid: Optional[ObjectId] = None) ->
     objectid : Optional[bson.objectid.ObjectId]
         If provided, it will generate a gender based on an ObjectId.
         Gender for a particular ObjectId will always be the same.
+
+    Returns
+    -------
+    Literal["Unknown", "Male", "Female"]
+        Generates and returns one of the 3 genders available based on the various conditions.
     """
 
     if species.gender_rate == -1:
