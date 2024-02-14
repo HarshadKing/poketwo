@@ -461,43 +461,43 @@ class Mongo(commands.Cog):
             setattr(self, x, instance.register(g[x]))
             getattr(self, x).bot = bot
 
-    async def fetch_member_info(self, member: discord.Member):
-        val = await self.bot.redis.hget(f"db:member", member.id)
+    async def fetch_member_info(self, member: discord.Member | Member):
+        val = await self.bot.redis.hget(f"db:member", int(int(member.id)))
         if val is None:
-            val = await self.Member.find_one({"id": member.id}, {"pokemon": 0, "pokedex": 0})
+            val = await self.Member.find_one({"id": int(member.id)}, {"pokemon": 0, "pokedex": 0})
             v = "" if val is None else pickle.dumps(val.to_mongo())
-            await self.bot.redis.hset(f"db:member", member.id, v)
+            await self.bot.redis.hset(f"db:member", int(member.id), v)
         elif len(val) == 0:
             return None
         else:
             val = self.Member.build_from_mongo(pickle.loads(val))
         return val
 
-    async def fetch_next_idx(self, member: discord.Member, reserve=1):
+    async def fetch_next_idx(self, member: discord.Member | Member, reserve=1):
         result = await self.db.member.find_one_and_update(
-            {"_id": member.id},
+            {"_id": int(member.id)},
             {"$inc": {"next_idx": reserve}},
             projection={"next_idx": 1},
         )
-        await self.bot.redis.hdel(f"db:member", member.id)
+        await self.bot.redis.hdel(f"db:member", int(member.id))
         return result["next_idx"]
 
-    async def reset_idx(self, member: discord.Member, value):
+    async def reset_idx(self, member: discord.Member | Member, value):
         result = await self.db.member.find_one_and_update(
-            {"_id": member.id},
+            {"_id": int(member.id)},
             {"$set": {"next_idx": value}},
             projection={"next_idx": 1},
         )
-        await self.bot.redis.hdel(f"db:member", member.id)
+        await self.bot.redis.hdel(f"db:member", int(member.id))
         return result["next_idx"]
 
-    async def fetch_pokedex(self, member: discord.Member, start: int, end: int):
+    async def fetch_pokedex(self, member: discord.Member | Member, start: int, end: int):
         filter_obj = {}
 
         for i in range(start, end):
             filter_obj[f"pokedex.{i}"] = 1
 
-        return await self.Member.find_one({"id": member.id}, filter_obj)
+        return await self.Member.find_one({"id": int(member.id)}, filter_obj)
 
     def fetch_market_list(self, aggregations=[]):
         pipeline = [
@@ -526,18 +526,18 @@ class Mongo(commands.Cog):
 
         return result[0]["num_matches"]
 
-    async def fetch_pokemon_list(self, member: discord.Member, aggregations=[]):
+    async def fetch_pokemon_list(self, member: discord.Member | Member, aggregations=[]):
         pipeline = [
-            {"$match": {"owner_id": member.id, "owned_by": "user"}},
+            {"$match": {"owner_id": int(member.id), "owned_by": "user"}},
             *aggregations,
         ]
         async for x in self.db.pokemon.aggregate(pipeline, allowDiskUse=True):
             yield self.bot.mongo.Pokemon.build_from_mongo(x)
 
-    async def fetch_pokemon_count(self, member: discord.Member, aggregations=[]):
+    async def fetch_pokemon_count(self, member: discord.Member | Member, aggregations=[]):
         result = await self.db.pokemon.aggregate(
             [
-                {"$match": {"owner_id": member.id, "owned_by": "user"}},
+                {"$match": {"owner_id": int(member.id), "owned_by": "user"}},
                 *aggregations,
                 {"$count": "num_matches"},
             ],
@@ -549,10 +549,10 @@ class Mongo(commands.Cog):
 
         return result[0]["num_matches"]
 
-    async def fetch_pokedex_count(self, member: discord.Member, aggregations=[]):
+    async def fetch_pokedex_count(self, member: discord.Member | Member, aggregations=[]):
         result = await self.db.member.aggregate(
             [
-                {"$match": {"_id": member.id}},
+                {"$match": {"_id": int(member.id)}},
                 {"$project": {"pokedex": {"$objectToArray": "$pokedex"}}},
                 {"$unwind": {"path": "$pokedex"}},
                 {"$replaceRoot": {"newRoot": "$pokedex"}},
@@ -567,10 +567,10 @@ class Mongo(commands.Cog):
 
         return result[0]["result"]
 
-    async def fetch_pokedex_sum(self, member: discord.Member, aggregations=[]):
+    async def fetch_pokedex_sum(self, member: discord.Member | Member, aggregations=[]):
         result = await self.db.member.aggregate(
             [
-                {"$match": {"_id": member.id}},
+                {"$match": {"_id": int(member.id)}},
                 {"$project": {"pokedex": {"$objectToArray": "$pokedex"}}},
                 {"$unwind": {"path": "$pokedex"}},
                 {"$replaceRoot": {"newRoot": "$pokedex"}},
