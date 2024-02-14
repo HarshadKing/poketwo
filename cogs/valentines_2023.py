@@ -67,7 +67,7 @@ class Valentines(commands.Cog):
             description="Cupid time is almost here, but wait...? He forgot his bow and arrow! Decidueye is taking his place in the Pokétwo world, celebrating Valentine's and spreading love!",
             color=0xFF6F77,
         )
-        embed.set_thumbnail(url=species.image_url)
+        embed.set_thumbnail(url=species.get_image_url())
         embed.add_field(
             name="Cupid Decidueye Gifts",
             value=f"`{ctx.clean_prefix}valentine gift <ID/@User> <message>`\n"

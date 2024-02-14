@@ -132,7 +132,7 @@ class Battle:
             if len(trainer.pokemon) > 0:
                 embed.add_field(
                     name=f"{trainer.user}'s Party",
-                    value="\n".join(f"{x.iv_percentage:.2%} IV {x.species} ({x.idx})" for x in trainer.pokemon),
+                    value="\n".join(f"{x.iv_percentage:.2%} IV {x.species} {x.gender_icon} ({x.idx})" for x in trainer.pokemon),
                 )
             else:
                 embed.add_field(name=f"{trainer.user}'s Party", value="None")
@@ -147,7 +147,7 @@ class Battle:
         for trainer in self.trainers:
             embed.add_field(
                 name=f"{trainer.user}'s Party",
-                value="\n".join(f"{x.iv_percentage:.2%} IV {x.species} ({x.idx + 1})" for x in trainer.pokemon),
+                value="\n".join(f"{x.iv_percentage:.2%} IV {x.species} {x.gender_icon} ({x.idx + 1})" for x in trainer.pokemon),
             )
 
         await self.channel.send(embed=embed)
@@ -311,9 +311,9 @@ class Battle:
             embed.add_field(
                 name=trainer.user.display_name,
                 value="\n".join(
-                    f"**{x.species}** • {x.hp}/{x.max_hp} HP"
+                    f"**{x.species} {x.gender_icon}** • {x.hp}/{x.max_hp} HP"
                     if trainer.selected == x
-                    else f"{x.species} • {x.hp}/{x.max_hp} HP"
+                    else f"{x.species} {x.gender_icon} • {x.hp}/{x.max_hp} HP"
                     for x in trainer.pokemon
                 ),
             )

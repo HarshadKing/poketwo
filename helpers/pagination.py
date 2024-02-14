@@ -142,7 +142,7 @@ class DexButtons(discord.ui.View):
 
         # Update image for shiny/gender selection
         image_url = self.species.get_image_url(
-            self.shiny_select.selected, "male" if not self.gender_select else self.gender_select.selected
+            self.shiny_select.selected, None if not self.gender_select else self.gender_select.selected
         )
         self._embed.set_image(url=image_url)
 

@@ -25,7 +25,7 @@ class Valentines(commands.Cog):
             description="It's that time of year again. Purchase a Valentine's Nidoran for that special someone, or simply a friend!",
             color=0xFF6F77,
         )
-        embed.set_thumbnail(url=species.image_url)
+        embed.set_thumbnail(url=species.get_image_url())
         embed.add_field(
             name="Nidoran Gifts",
             value=f"`{ctx.clean_prefix}valentine gift <@user> [message]`\n"
@@ -116,7 +116,7 @@ class Valentines(commands.Cog):
             color=0xFF6F77,
         )
         embed.set_author(name=ctx.author, icon_url=ctx.author.display_avatar.url)
-        embed.set_image(url=species.image_url)
+        embed.set_image(url=species.get_image_url())
         embed.set_footer(text="You have received a Valentine's Nidoran.")
         await user.send(embed=embed)
 

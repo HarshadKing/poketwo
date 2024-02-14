@@ -229,7 +229,7 @@ class Pride(commands.Cog):
             title=f"Set {pokemon:lp} as Pride Buddy?",
             description=f"You can offer flags to your Pride Buddy to increase its pride level and receive Pokécoins. Once {species}'s pride level is high enough, it will transform into {pride_species}!\n\nUse `@Pokétwo pride` to view more info.",
         )
-        embed.set_image(url=pride_species.image_url)
+        embed.set_image(url=pokemon.image_url)
 
         if await ctx.confirm(embed=embed, cls=ConfirmationYesNoView):
             if current := await self.fetch_pride_buddy(ctx.author):
@@ -283,7 +283,7 @@ class Pride(commands.Cog):
                 name=f"Pride Buddy: {buddy:lpi} — {member.pride_2023_buddy_progress}%",
                 value=f"Offer flags to {buddy.species} to increase its pride level and receive Pokécoins. Once its pride level is high enough, it will transform into {pride_species}!\nUse `@Pokétwo pride buddy` for more details.",
             )
-            embed.set_thumbnail(url=buddy.species.image_url)
+            embed.set_thumbnail(url=buddy.image_url)
         else:
             embed.add_field(
                 name="Pride Buddy",
@@ -335,7 +335,7 @@ class Pride(commands.Cog):
             title=f"Pride Buddy: {buddy:lp}",
             description=f"Use `@Pokétwo pride offer <flag> <qty>` to offer flags to {buddy.species} to increase its pride level and receive Pokécoins. Once its pride level is high enough, it will transform into {pride_species}!\n",
         )
-        embed.set_image(url=buddy.species.image_url)
+        embed.set_image(url=buddy.image_url)
         embed.add_field(
             name="Preferred Flag",
             value=f"{self.bot.sprites[preferred_flag]} {FLAG_NAMES[preferred_flag]}",
@@ -409,7 +409,7 @@ class Pride(commands.Cog):
                 title=f"Your {buddy.species} is transforming!",
                 description=f"{buddy.species} (No. {buddy.idx}) transformed into {pride_species}!",
             )
-            embed.set_image(url=pride_species.image_url)
+            embed.set_image(url=buddy.image_url)
             await ctx.send(
                 f"You offered {qty} {FLAG_NAMES[flag]} to {buddy.species}. You received {pc} Pokécoins!", embed=embed
             )

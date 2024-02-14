@@ -88,7 +88,7 @@ class Market(commands.Cog):
 
         def format_item(menu, x):
             pokemon = self.bot.mongo.Pokemon.build_from_mongo(x)
-            return f"`{padn(x['market_data']['_id'], menu.maxn)}`　**{pokemon:li}**　•　{pokemon.iv_total / 186:.2%}　•　{x['market_data']['price']:,} pc"
+            return f"`{padn(x['market_data']['_id'], menu.maxn)}`　**{pokemon:lig}**　•　{pokemon.iv_total / 186:.2%}　•　{x['market_data']['price']:,} pc"
 
         pokemon = self.bot.mongo.fetch_market_list(aggregations)
 
@@ -324,16 +324,14 @@ class Market(commands.Cog):
 
         embed = self.bot.Embed(title=f"{pokemon:l}", color=pokemon.color or constants.PINK)
 
-        if pokemon.shiny:
-            embed.set_image(url=pokemon.species.shiny_image_url)
-        else:
-            embed.set_image(url=pokemon.species.image_url)
+        embed.set_image(url=pokemon.image_url)
 
         embed.set_thumbnail(url=self.bot.user.display_avatar.url)
 
         info = (
             f"**XP:** {pokemon.xp}/{pokemon.max_xp}",
             f"**Nature:** {pokemon.nature}",
+            f"**Gender:** {pokemon.gender}",
         )
 
         embed.add_field(name="Details", value="\n".join(info), inline=False)

@@ -648,10 +648,7 @@ class Shop(commands.Cog):
 
             embed.description = f"Your {name} is now level {pokemon.level + qty}!"
 
-            if pokemon.shiny:
-                embed.set_thumbnail(url=pokemon.species.shiny_image_url)
-            else:
-                embed.set_thumbnail(url=pokemon.species.image_url)
+            embed.set_thumbnail(url=pokemon.image_url)
 
             pokemon.level += qty
             guild = await self.bot.mongo.fetch_guild(ctx.guild)
@@ -662,10 +659,7 @@ class Shop(commands.Cog):
                     value=f"Your {name} has turned into a {evo}!",
                 )
 
-                if pokemon.shiny:
-                    embed.set_thumbnail(url=evo.shiny_image_url)
-                else:
-                    embed.set_thumbnail(url=evo.image_url)
+                embed.set_thumbnail(url=evo.get_image_url(pokemon.shiny, pokemon.gender))
 
                 update["$set"]["species_id"] = evo.id
 

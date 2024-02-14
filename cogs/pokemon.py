@@ -484,9 +484,7 @@ class Pokemon(commands.Cog):
 
             embed = self.bot.Embed(color=pokemon.color or 0x9CCFFF, title=f"{pokemon:lnf}")
 
-            image = pokemon.species.shiny_image_url if pokemon.shiny else pokemon.species.image_url
-            if pokemon.species.has_gender_differences == 1 and pokemon.gender == "Female":
-                image = pokemon.species.shiny_image_url_female if pokemon.shiny else pokemon.species.image_url_female
+            image = pokemon.image_url
             embed.set_image(url=image)
 
             embed.set_thumbnail(url=ctx.author.display_avatar.url)
@@ -934,7 +932,7 @@ class Pokemon(commands.Cog):
             menu.maxn = max(x.idx for x in items)
 
         def format_item(menu, p):
-            return f"`{padn(p, menu.maxn)}`　**{p:nif}**　•　Lvl. {p.level} {constants.GENDER_EMOTES[p.gender.lower()]}　•　{p.iv_total / 186:.2%}"
+            return f"`{padn(p, menu.maxn)}`　**{p:nif}**　•　Lvl. {p.level} {p.gender_icon}　•　{p.iv_total / 186:.2%}"
 
         count = await self.bot.mongo.fetch_pokemon_count(ctx.author, aggregations)
         pokemon = self.bot.mongo.fetch_pokemon_list(ctx.author, aggregations)
@@ -1224,10 +1222,7 @@ class Pokemon(commands.Cog):
                 embed.description += f"\n**Your {name} is evolving!**\nYour {name} has turned into a {evo}!"
 
             if len(args) == 1:
-                if pokemon.shiny:
-                    embed.set_thumbnail(url=evo.shiny_image_url)
-                else:
-                    embed.set_thumbnail(url=evo.image_url)
+                embed.set_thumbnail(url=evo.get_image_url(pokemon.shiny, pokemon.gender))
 
             evolved.append((pokemon, evo))
 

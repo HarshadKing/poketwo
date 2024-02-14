@@ -807,16 +807,14 @@ class Trading(commands.Cog):
 
         embed = self.bot.Embed(title=f"{pokemon:ln}")
 
-        if pokemon.shiny:
-            embed.set_image(url=pokemon.species.shiny_image_url)
-        else:
-            embed.set_image(url=pokemon.species.image_url)
+        embed.set_image(url=pokemon.image_url)
 
         embed.set_thumbnail(url=other.display_avatar.url)
 
         info = (
             f"**XP:** {pokemon.xp}/{pokemon.max_xp}",
             f"**Nature:** {pokemon.nature}",
+            f"**Gender:** {pokemon.gender}",
         )
 
         embed.add_field(name="Details", value="\n".join(info), inline=False)

@@ -81,10 +81,7 @@ class Spawning(commands.Cog):
 
                     embed.description = f"Your {name} is now level {pokemon.level + 1}!"
 
-                    if pokemon.shiny:
-                        embed.set_thumbnail(url=pokemon.species.shiny_image_url)
-                    else:
-                        embed.set_thumbnail(url=pokemon.species.image_url)
+                    embed.set_thumbnail(url=pokemon.image_url)
 
                     pokemon.level += 1
                     guild = await self.bot.mongo.fetch_guild(message.channel.guild)
@@ -95,10 +92,7 @@ class Spawning(commands.Cog):
                             value=f"Your {name} has turned into a {evo}!",
                         )
 
-                        if pokemon.shiny:
-                            embed.set_thumbnail(url=evo.shiny_image_url)
-                        else:
-                            embed.set_thumbnail(url=evo.image_url)
+                        embed.set_thumbnail(url=evo.get_image_url(pokemon.shiny, pokemon.gender))
 
                         update["$set"][f"species_id"] = evo.id
 

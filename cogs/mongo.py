@@ -45,7 +45,7 @@ class PokemonBase(MixinDocument):
     xp = fields.IntegerField(required=True)
     nature = fields.StringField(required=True)
     shiny = fields.BooleanField(required=True)
-    gender = fields.StringField(required=True)
+    gender = fields.StringField(default="Unknown")
 
     # Stats
     iv_hp = fields.IntegerField(required=True)
@@ -90,6 +90,9 @@ class PokemonBase(MixinDocument):
 
         name += str(self.species)
 
+        if "g" in spec:
+            name += f" {self.gender_icon}"
+
         if self.nickname is not None and "n" in spec:
             name += f' "{self.nickname}"'
 
@@ -120,6 +123,14 @@ class PokemonBase(MixinDocument):
     @property
     def species(self):
         return self.bot.data.species_by_number(self.species_id)
+
+    @property
+    def gender_icon(self):
+        return constants.GENDER_EMOTES[self.gender.lower()]
+
+    @property
+    def image_url(self) -> str:
+        return self.species.get_image_url(self.shiny, self.gender)
 
     @property
     def max_xp(self):
