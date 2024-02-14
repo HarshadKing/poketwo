@@ -9,7 +9,9 @@ from discord.ext import commands, tasks
 
 from cogs import mongo
 from data import models
+from data.constants import GENDER_IMAGE_SUFFIXES
 from helpers import checks
+from helpers import genders
 from helpers.utils import write_fp
 
 
@@ -79,10 +81,7 @@ class Spawning(commands.Cog):
 
                     embed.description = f"Your {name} is now level {pokemon.level + 1}!"
 
-                    if pokemon.shiny:
-                        embed.set_thumbnail(url=pokemon.species.shiny_image_url)
-                    else:
-                        embed.set_thumbnail(url=pokemon.species.image_url)
+                    embed.set_thumbnail(url=pokemon.image_url)
 
                     pokemon.level += 1
                     guild = await self.bot.mongo.fetch_guild(message.channel.guild)
@@ -93,10 +92,7 @@ class Spawning(commands.Cog):
                             value=f"Your {name} has turned into a {evo}!",
                         )
 
-                        if pokemon.shiny:
-                            embed.set_thumbnail(url=evo.shiny_image_url)
-                        else:
-                            embed.set_thumbnail(url=evo.image_url)
+                        embed.set_thumbnail(url=evo.get_image_url(pokemon.shiny, pokemon.gender))
 
                         update["$set"][f"species_id"] = evo.id
 
@@ -221,17 +217,26 @@ class Spawning(commands.Cog):
 
         image = None
 
+        gender = genders.generate_gender(species)
+
         if hasattr(self.bot.config, "SERVER_URL"):
-            url = urljoin(self.bot.config.SERVER_URL, f"image?species={species.id}&time=")
-            url += "day" if guild.is_day else "night"
-            async with self.bot.http_session.get(url) as resp:
+            time = "day" if guild.is_day else "night"
+            url = urljoin(self.bot.config.SERVER_URL, f"image")
+            params = {
+                "species": str(species.id),
+                "time": time,
+                "gender": gender,
+            }
+            async with self.bot.http_session.get(url, params=params) as resp:
                 if resp.status == 200:
                     arr = await self.bot.loop.run_in_executor(None, write_fp, await resp.read())
                     image = discord.File(arr, filename="pokemon.jpg")
                     embed.set_image(url="attachment://pokemon.jpg")
 
         if image is None:
-            image = discord.File(f"data/images/{species.id}.png", filename="pokemon.png")
+            gender_suffix = GENDER_IMAGE_SUFFIXES.get(gender.lower(), "")
+            path = f"data/images/{species.id}{gender_suffix}.png"
+            image = discord.File(path, filename="pokemon.png")
             embed.set_image(url="attachment://pokemon.png")
 
         if incense:
@@ -243,6 +248,8 @@ class Spawning(commands.Cog):
         if redeem:
             await self.bot.redis.set(f"redeem:{channel.id}", 1)
             await self.bot.redis.expire(f"redeem:{channel.id}", 30)
+
+        await self.bot.redis.hset("gender", channel.id, gender)
 
         await channel.send(
             file=image,
@@ -306,6 +313,8 @@ class Spawning(commands.Cog):
             await self.bot.redis.delete(f"catches:{ctx.author.id}")
 
         species_id = await self.bot.redis.hget("wild", ctx.channel.id)
+        gender = await self.bot.redis.hget("gender", ctx.channel.id)
+        gender = gender.decode("ASCII")
         species = self.bot.data.species_by_number(int(species_id))
 
         if models.deaccent(guess.lower().replace("′", "'")) not in species.correct_guesses:
@@ -323,37 +332,13 @@ class Spawning(commands.Cog):
 
         member = await self.bot.mongo.fetch_member_info(ctx.author)
 
-        shiny = member.determine_shiny(species)
-        level = min(max(int(random.normalvariate(20, 10)), 1), 100)
-        moves = [x.move.id for x in species.moves if level >= x.method.level]
-        random.shuffle(moves)
-
-        ivs = [mongo.random_iv() for i in range(6)]
-
-        r = await self.bot.mongo.db.pokemon.insert_one(
-            {
-                "owner_id": ctx.author.id,
-                "owned_by": "user",
-                "species_id": species.id,
-                "level": level,
-                "xp": 0,
-                "nature": mongo.random_nature(),
-                "iv_hp": ivs[0],
-                "iv_atk": ivs[1],
-                "iv_defn": ivs[2],
-                "iv_satk": ivs[3],
-                "iv_sdef": ivs[4],
-                "iv_spd": ivs[5],
-                "iv_total": sum(ivs),
-                "moves": moves[:4],
-                "shiny": shiny,
-                "idx": await self.bot.mongo.fetch_next_idx(ctx.author),
-            }
-        )
-        if shiny:
+        pokemon = await self.bot.mongo.make_pokemon(member, species, gender=gender)
+        pokemon_obj = self.bot.mongo.Pokemon.build_from_mongo(pokemon)
+        r = await self.bot.mongo.db.pokemon.insert_one(pokemon)
+        if pokemon_obj.shiny:
             await self.bot.mongo.update_member(ctx.author, {"$inc": {"shinies_caught": 1}})
 
-        message = f"Congratulations {ctx.author.mention}! You caught a level {level} {species}!"
+        message = f"Congratulations {ctx.author.mention}! You caught a {pokemon_obj:lnPg!s}!"
 
         memberp = await self.bot.mongo.fetch_pokedex(ctx.author, species.dex_number, species.dex_number + 1)
 
@@ -399,14 +384,14 @@ class Spawning(commands.Cog):
             )
 
         if member.shiny_hunt == species.dex_number:
-            if shiny:
+            if pokemon_obj.shiny:
                 message += f"\n\nShiny streak reset. (**{member.shiny_streak + 1}**)"
                 await self.bot.mongo.update_member(ctx.author, {"$set": {"shiny_streak": 0}})
             else:
                 message += f"\n\n+1 Shiny chain! (**{member.shiny_streak + 1}**)"
                 await self.bot.mongo.update_member(ctx.author, {"$inc": {"shiny_streak": 1}})
 
-        if shiny:
+        if pokemon_obj.shiny:
             message += "\n\nThese colors seem unusual... ✨"
 
         await self.bot.redis.delete(f"redeem:{ctx.channel.id}")
@@ -434,9 +419,11 @@ class Spawning(commands.Cog):
 
             embed.add_field(
                 name=f"Currently Hunting",
-                value=self.bot.data.species_by_number(member.shiny_hunt).name
-                if member.shiny_hunt
-                else f"Type `{ctx.clean_prefix}shinyhunt <pokémon>` to begin!",
+                value=(
+                    self.bot.data.species_by_number(member.shiny_hunt).name
+                    if member.shiny_hunt
+                    else f"Type `{ctx.clean_prefix}shinyhunt <pokémon>` to begin!"
+                ),
             )
 
             if member.shiny_hunt:

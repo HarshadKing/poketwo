@@ -305,27 +305,10 @@ class Anniversary(commands.Cog):
                 species = random.choices(pool, weights=[x.abundance + 1 for x in pool], k=1)[0]
                 level = min(max(int(random.normalvariate(30, 10)), 1), 100)
                 shiny = reward == "shiny" or member.determine_shiny(species)
-                ivs = [mongo.random_iv() for i in range(6)]
 
-                pokemon = {
-                    "owner_id": ctx.author.id,
-                    "owned_by": "user",
-                    "species_id": species.id,
-                    "level": level,
-                    "xp": 0,
-                    "nature": mongo.random_nature(),
-                    "iv_hp": ivs[0],
-                    "iv_atk": ivs[1],
-                    "iv_defn": ivs[2],
-                    "iv_satk": ivs[3],
-                    "iv_sdef": ivs[4],
-                    "iv_spd": ivs[5],
-                    "iv_total": sum(ivs),
-                    "shiny": shiny,
-                    "idx": await self.bot.mongo.fetch_next_idx(ctx.author),
-                }
+                pokemon = await self.bot.mongo.make_pokemon(member, species, level=level, shiny=shiny)
                 added_pokemon.append(pokemon)
-                text.append(f"{self.bot.mongo.Pokemon.build_from_mongo(pokemon):lni} ({sum(ivs) / 186:.2%} IV)")
+                text.append(f"{self.bot.mongo.Pokemon.build_from_mongo(pokemon):lniP}")
 
         embed = self.bot.Embed(
             title=f"Opening {amt} Anniversary Box{'' if amt == 1 else 'es'}...",

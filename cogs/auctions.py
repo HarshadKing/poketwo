@@ -127,14 +127,13 @@ class Auctions(commands.Cog):
         embed.color = pokemon.color or embed.color
         embed.set_author(name=str(author), icon_url=author.display_avatar.url)
 
-        if pokemon.shiny:
-            embed.set_thumbnail(url=pokemon.species.shiny_image_url)
-        else:
-            embed.set_thumbnail(url=pokemon.species.image_url)
+        embed.set_thumbnail(url=pokemon.image_url)
 
         info = (
             f"**XP:** {pokemon.xp}/{pokemon.max_xp}",
             f"**Nature:** {pokemon.nature}",
+            f"**Gender:** {pokemon.gender}",
+            f"",
             f"**HP:** {pokemon.hp} – IV: {pokemon.iv_hp}/31",
             f"**Attack:** {pokemon.atk} – IV: {pokemon.iv_atk}/31",
             f"**Defense:** {pokemon.defn} – IV: {pokemon.iv_defn}/31",
@@ -460,6 +459,7 @@ class Auctions(commands.Cog):
     @flags.add_flag("--region", "--r", type=str, action="append")
     @flags.add_flag("--move", nargs="+", action="append")
     @flags.add_flag("--learns", nargs="*", action="append")
+    @flags.add_flag("--gender", "--g", type=str, action="append")
 
     # IV
     @flags.add_flag("--level", nargs="+", action="append")
@@ -530,13 +530,13 @@ class Auctions(commands.Cog):
             pokemon = self.bot.mongo.Pokemon.build_from_mongo(auction)
             if auction["auction_data"]["bidder_id"] is not None:
                 return (
-                    f"`{padn(auction['auction_data']['_id'], menu.maxn)}`　**{pokemon:Li}**　•　"
+                    f"`{padn(auction['auction_data']['_id'], menu.maxn)}`　**{pokemon:Lig}**　•　"
                     f"{pokemon.iv_total / 186:.2%}　•　CB: {auction['auction_data']['current_bid']:,}　•　"
                     f"BI: {auction['auction_data']['bid_increment']:,} pc　•　{converters.strfdelta(auction['auction_data']['ends'] - now, max_len=1)}"
                 )
             else:
                 return (
-                    f"`{padn(auction['auction_data']['_id'], menu.maxn)}`　**{pokemon:Li}**　•　"
+                    f"`{padn(auction['auction_data']['_id'], menu.maxn)}`　**{pokemon:Lig}**　•　"
                     f"{pokemon.iv_total / 186:.2%}　•　SB: {auction['auction_data']['current_bid'] + auction['auction_data']['bid_increment']:,} pc　•　"
                     f"{converters.strfdelta(auction['auction_data']['ends'] - now, max_len=1)}"
                 )

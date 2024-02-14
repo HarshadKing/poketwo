@@ -1,8 +1,12 @@
+from typing import Optional
+import discord
 import math
 import discord
+from helpers import constants
 
 from discord.ext import menus
 from discord.ext.menus.views import ViewMenuPages
+from lib import radio
 
 REMOVE_BUTTONS = [
     "\N{BLACK LEFT-POINTING DOUBLE TRIANGLE WITH VERTICAL BAR}\ufe0f",
@@ -126,3 +130,75 @@ class ContinuablePages(ViewMenuPages):
             self.current_page = page % self._source.get_max_pages()
         self.message = None
         await self.start(ctx, channel=channel, wait=wait)
+
+
+class DexButtons(discord.ui.View):
+    def __init__(self, ctx, embed, species, is_shiny, gender):
+        super().__init__()
+        self._embed = embed
+        self.ctx = ctx
+        self.species = species
+        if species.has_gender_differences == 1:
+            self.gender_select = GenderRadioGroup(self, gender)
+            self.gender_select.add_to_view(self)
+        else:
+            self.gender_select = None
+        self.shiny_select = ShinyRadioGroup(self, is_selected=is_shiny)
+        self.shiny_select.add_to_view(self)
+
+    async def interaction_check(self, interaction):
+        if interaction.user.id != self.ctx.author.id:
+            await interaction.response.send_message("You can't use this!", ephemeral=True)
+            return False
+        return True
+
+    def get_embed(self) -> discord.Embed:
+        """Update base embed based on current attributes and return it."""
+
+        # Update title to include sparkles emoji or not
+        self._embed.title = f"#{self.species.dex_number} — {self.species}"
+        if self.shiny_select.selected:
+            self._embed.title += " \N{SPARKLES}"
+
+        # Update image for shiny/gender selection
+        image_url = self.species.get_image_url(
+            self.shiny_select.selected, None if not self.gender_select else self.gender_select.selected
+        )
+        self._embed.set_image(url=image_url)
+
+        return self._embed
+
+    async def update_embed(self, interaction):
+        await interaction.response.edit_message(embed=self.get_embed(), view=self)
+
+
+class GenderRadioGroup(radio.RadioGroup):
+    def __init__(self, view: DexButtons, gender):
+        super().__init__()
+        self.view = view
+        male_selected = True if gender == "Male" else False
+        self.add_option("", "male", is_selected=male_selected, emoji=constants.GENDER_EMOTES["male"])
+        self.add_option("", "female", is_selected=not male_selected, emoji=constants.GENDER_EMOTES["female"])
+
+    async def callback(self, interaction, button):
+        super().callback(interaction, button)
+        await self.view.update_embed(interaction)
+
+
+class ShinyRadioGroup(radio.RadioGroup):
+    def __init__(self, view: DexButtons, is_selected: bool = False):
+        super().__init__(
+            default_style=discord.ButtonStyle.red, selected_style=discord.ButtonStyle.green, allow_deselect=True
+        )
+        self.view = view
+        self.add_option("✨", "shiny", is_selected=is_selected)
+
+    @property
+    def selected(self):
+        # This isn't a normal radio group — it only has one button and
+        # we just care about whether it's selected or not.
+        return self._selected is not None
+
+    async def callback(self, interaction, button):
+        super().callback(interaction, button)
+        await self.view.update_embed(interaction)
