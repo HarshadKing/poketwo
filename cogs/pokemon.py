@@ -8,6 +8,7 @@ from operator import itemgetter
 from discord.errors import DiscordException
 from discord.ext import commands
 from pymongo import UpdateOne
+from data.constants import GENDER_TYPES
 
 from helpers import checks, constants, converters, flags, pagination
 
@@ -933,12 +934,7 @@ class Pokemon(commands.Cog):
             menu.maxn = max(x.idx for x in items)
 
         def format_item(menu, p):
-            gender_icon = (
-                constants.GENDER_EMOTES["male"]
-                if p.gender == "Male"
-                else constants.GENDER_EMOTES["female"] if p.gender == "Female" else constants.GENDER_EMOTES["unknown"]
-            )
-            return f"`{padn(p, menu.maxn)}`　**{p:nif}**　•　Lvl. {p.level} {gender_icon}　•　{p.iv_total / 186:.2%}"
+            return f"`{padn(p, menu.maxn)}`　**{p:nif}**　•　Lvl. {p.level} {constants.GENDER_EMOTES[p.gender.lower()]}　•　{p.iv_total / 186:.2%}"
 
         count = await self.bot.mongo.fetch_pokemon_count(ctx.author, aggregations)
         pokemon = self.bot.mongo.fetch_pokemon_list(ctx.author, aggregations)
@@ -1084,28 +1080,43 @@ class Pokemon(commands.Cog):
 
         else:
             shiny = False
-            gender = "Male"
+            searched_gender = None
 
             if search_or_page[0] in "Nn#" and search_or_page[1:].isdigit():
                 species = self.bot.data.species_by_number(int(search_or_page[1:]))
 
             else:
-                search = search_or_page
+                # Parse search string
+                search_parts = search_or_page.lower().split()
 
-                if search_or_page.lower().startswith("shiny "):
+                # Check if shiny is queried
+                if search_parts[0] == "shiny":
                     shiny = True
-                    search = search_or_page[6:]
+                    search_parts.pop(0)
 
-                if "female" in search.lower():
-                    gender = "Female"
-                    search = search.lower().replace("female ", "")
+                # Check if a specific gender is queried
+                if search_parts[0].capitalize() in GENDER_TYPES.values():
+                    searched_gender = search_parts.pop(0).capitalize()
 
+                search = " ".join(search_parts)
                 species = self.bot.data.species_by_name(search)
                 if species is None:
-                    return await ctx.send(f"Could not find a pokemon matching `{search_or_page}`.")
+                    return await ctx.send(f"Could not find a pokémon matching `{search_or_page}`.")
 
-                if species.has_gender_differences == 0:
-                    gender = "Male"
+                gender_unknown = species.gender_rate == -1
+                if gender_unknown and searched_gender is not None:
+                    return await ctx.send(f"Invalid gender provided for that pokémon.")
+                elif gender_unknown:
+                    gender = "Unknown"
+                elif species.has_gender_differences:
+                    # Specified gender if any, otherwise default to "Male"
+                    # TODO: It doesn't make sense to default to Male because of pokemon
+                    # TODO: whose default is Female, such as Nidoran-F. In the future
+                    # TODO: we should rely on `species.default_gender`, but not possible
+                    # TODO: at this point with how little time we have.
+                    gender = searched_gender or "Male"
+                else:
+                    gender = None
 
             member = await self.bot.mongo.fetch_pokedex(ctx.author, species.dex_number, species.dex_number + 1)
 
@@ -1136,19 +1147,6 @@ class Pokemon(commands.Cog):
             if species.evolution_text:
                 embed.add_field(name="Evolution", value=species.evolution_text, inline=False)
 
-            if shiny:
-                embed.title = f"#{species.dex_number} — {species} ✨"
-                image_url = species.shiny_image_url_female if gender == "Female" else species.shiny_image_url
-                embed.set_image(url=image_url)
-                is_shiny = True
-            else:
-                image_url = species.image_url_female if gender == "Female" else species.image_url
-                embed.set_image(url=image_url)
-                is_shiny = False
-
-            # Ads the correct button settings to the embed
-            view = pagination.DexButtons(ctx, embed=embed, species=species, is_shiny=is_shiny, gender=gender)
-
             base_stats = (
                 f"**HP:** {species.base_stats.hp}",
                 f"**Attack:** {species.base_stats.atk}",
@@ -1159,7 +1157,7 @@ class Pokemon(commands.Cog):
             )
 
             if species.gender_rate and species.gender_rate != -1:
-                gender_rate = f"{constants.GENDER_EMOTES['male']} {species.gender_ratios[0]}% - {constants.GENDER_EMOTES['female']} { species.gender_ratios[1]}%"
+                gender_rate = f"{constants.GENDER_EMOTES['male']} {species.gender_ratios[0]}% - {constants.GENDER_EMOTES['female']} {species.gender_ratios[1]}%"
             else:
                 gender_rate = "Gender unknown"
 
@@ -1181,7 +1179,9 @@ class Pokemon(commands.Cog):
 
             embed.set_footer(text=text)
 
-            await ctx.send(embed=embed, view=view)
+            # Adds the correct button settings to the embed
+            view = pagination.DexButtons(ctx, embed=embed, species=species, is_shiny=shiny, gender=gender)
+            await ctx.send(embed=view.get_embed(), view=view)
 
     @checks.has_started()
     @commands.guild_only()

@@ -115,7 +115,7 @@ class ContinuablePages(ViewMenuPages):
 class DexButtons(discord.ui.View):
     def __init__(self, ctx, embed, species, is_shiny, gender):
         super().__init__()
-        self.embed = embed
+        self._embed = embed
         self.ctx = ctx
         self.species = species
         if species.has_gender_differences == 1:
@@ -132,19 +132,24 @@ class DexButtons(discord.ui.View):
             return False
         return True
 
-    async def update_embed(self, interaction):
+    def get_embed(self) -> discord.Embed:
+        """Update base embed based on current attributes and return it."""
+
         # Update title to include sparkles emoji or not
-        self.embed.title = f"#{self.species.dex_number} — {self.species}"
+        self._embed.title = f"#{self.species.dex_number} — {self.species}"
         if self.shiny_select.selected:
-            self.embed.title += " \N{SPARKLES}"
+            self._embed.title += " \N{SPARKLES}"
 
         # Update image for shiny/gender selection
         image_url = self.species.get_gender_image_url(
             self.shiny_select.selected, "male" if not self.gender_select else self.gender_select.selected
         )
-        self.embed.set_image(url=image_url)
+        self._embed.set_image(url=image_url)
 
-        await interaction.response.edit_message(embed=self.embed, view=self)
+        return self._embed
+
+    async def update_embed(self, interaction):
+        await interaction.response.edit_message(embed=self.get_embed(), view=self)
 
 
 class GenderRadioGroup(radio.RadioGroup):
