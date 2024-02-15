@@ -2,15 +2,17 @@ import contextlib
 import itertools
 import math
 import typing
+from collections import defaultdict
 from datetime import datetime
+from functools import cache
 from operator import itemgetter
 
 from discord.errors import DiscordException
 from discord.ext import commands
 from pymongo import UpdateOne
-from data.constants import GENDER_TYPES
 
-from helpers import checks, constants, converters, flags, pagination
+from data.constants import GENDER_TYPES
+from helpers import checks, constants, converters, flags, genders, pagination
 
 
 def isfloat(x):
@@ -348,7 +350,7 @@ class Pokemon(commands.Cog):
         elif unfavnum == 0:
             return await ctx.reply(
                 f"Found no unfavorited pokémon within this selection.\nTo mass unfavorite a pokemon, please use `{ctx.clean_prefix}unfavoriteall`.",
-                mention_author=mention_author
+                mention_author=mention_author,
             )
 
         # Fetch pokemon list
@@ -367,7 +369,10 @@ class Pokemon(commands.Cog):
             {"$set": {"favorite": True}},
         )
 
-        await ctx.reply(f"Favorited your {unfavnum} unfavorited pokemon.\nAll {num} selected pokemon are now favorited.", mention_author=mention_author)
+        await ctx.reply(
+            f"Favorited your {unfavnum} unfavorited pokemon.\nAll {num} selected pokemon are now favorited.",
+            mention_author=mention_author,
+        )
 
     # Filter
     @flags.add_flag("--shiny", action="store_true")
@@ -463,7 +468,7 @@ class Pokemon(commands.Cog):
 
         await ctx.reply(
             f"Unfavorited your {favnum} favorited pokemon.\nAll {num} selected pokemon are now unfavorited.",
-            mention_author=mention_author
+            mention_author=mention_author,
         )
 
     @checks.has_started()
@@ -597,6 +602,41 @@ class Pokemon(commands.Cog):
 
         return ops
 
+    @cache
+    def gender_filter(self, gender_field, gender):
+        if gender.casefold() == "unknown":
+            return {
+                "$match": {"species_id": {"$in": [s.id for s in self.bot.data.pokemon.values() if s.gender_rate == -1]}}
+            }
+
+        op = "$lt" if gender == "male" else "$gte"
+        by_gender_ratio = defaultdict(list)
+
+        for k, v in self.bot.data.pokemon.items():
+            if v.gender_rate == -1:
+                continue
+            if k in genders.MALE_OVERRIDES:
+                by_gender_ratio[100, 0].append(k)
+            else:
+                by_gender_ratio[tuple(v.gender_ratios)].append(k)
+
+        cases = [
+            {
+                gender_field: {"$exists": False},
+                "species_id": {"$in": v},
+                "$expr": {
+                    op: [
+                        # times 1000 because mongodb has milliseconds not seconds
+                        {"$mod": [{"$toLong": {"$toDate": "$_id"}}, int(k[0] * 10 + k[1] * 10) * 1000]},
+                        int(k[0] * 10) * 1000,
+                    ]
+                },
+            }
+            for k, v in by_gender_ratio.items()
+        ]
+
+        return {"$match": {"$or": [{gender_field: gender.title()}, *cases]}}
+
     async def create_filter(self, flags, ctx, order_by=None, map_field=lambda x: x):
         aggregations = []
 
@@ -675,7 +715,7 @@ class Pokemon(commands.Cog):
             aggregations.append({"$match": {"auction_data.ends": {"$lt": datetime.utcnow() + flags["ends"]}}})
 
         if "gender" in flags and flags["gender"]:
-            aggregations.append({"$match": {map_field("gender"): flags["gender"][0].capitalize()}})
+            aggregations.append(self.gender_filter(map_field("gender"), flags["gender"][0]))
 
         # Numerical flags
 
@@ -876,7 +916,10 @@ class Pokemon(commands.Cog):
         num = await self.bot.mongo.fetch_pokemon_count(ctx.author, aggregations=aggregations)
 
         if num == 0:
-            return await ctx.reply("Found no pokémon matching this search (excluding favorited and selected pokémon).", mention_author=mention_author)
+            return await ctx.reply(
+                "Found no pokémon matching this search (excluding favorited and selected pokémon).",
+                mention_author=mention_author,
+            )
 
         # confirm
 
@@ -913,7 +956,7 @@ class Pokemon(commands.Cog):
 
         await ctx.reply(
             f"You have released {result.modified_count} pokémon. You received {2*result.modified_count:,} Pokécoins!",
-            mention_author=mention_author
+            mention_author=mention_author,
         )
         self.bot.dispatch("release", ctx.author, result.modified_count)
 
@@ -1080,7 +1123,9 @@ class Pokemon(commands.Cog):
                     return False
                 if flags["region"] and key not in self.bot.data.list_region(flags["region"]):
                     return False
-                if flags["learns"] and key not in [i for x in flags["learns"] for i in self.bot.data.list_move(" ".join(x))]:
+                if flags["learns"] and key not in [
+                    i for x in flags["learns"] for i in self.bot.data.list_move(" ".join(x))
+                ]:
                     return False
 
                 return True

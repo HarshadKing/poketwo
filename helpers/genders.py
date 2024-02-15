@@ -5,11 +5,10 @@ from bson.objectid import ObjectId
 
 from data.models import Species
 
-
 MALE_OVERRIDES = [521, 592, 593, 668, 678, 876, 916]
 
 
-def generate_gender(species: Species, *, objectid: Optional[ObjectId] = None) -> Literal["Unknown", "Male", "Female"]:
+def generate_gender(species: Species, *, _id: Optional[ObjectId] = None) -> Literal["Unknown", "Male", "Female"]:
     """Generates gender weighted by its species' gender data.
 
     Parameters
@@ -27,14 +26,12 @@ def generate_gender(species: Species, *, objectid: Optional[ObjectId] = None) ->
     """
 
     if species.gender_rate == -1:
-        gender = "Unknown"
-    elif objectid is not None:
+        return "Unknown"
+
+    if _id is not None:
         if species.id in MALE_OVERRIDES:
             return "Male"
+        seconds = int(_id.generation_time.timestamp())
+        return "Male" if seconds % int(10 * sum(species.gender_ratios)) < 10 * species.gender_ratios[0] else "Female"
 
-        _id = int(str(objectid), 16)
-        male_term = species.gender_ratios[0]
-        gender = "Male" if (_id % 1000) < (male_term * 10) else "Female"
-    else:
-        gender = random.choices(["Male", "Female"], species.gender_ratios, k=1)[0]
-    return gender
+    return random.choices(["Male", "Female"], species.gender_ratios, k=1)[0]

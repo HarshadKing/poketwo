@@ -17,7 +17,6 @@ from helpers import constants
 from helpers.genders import generate_gender
 from lib.probability import random_iv_composition
 
-
 random_iv = lambda: random.randint(0, 31)
 random_nature = lambda: random.choice(constants.NATURES)
 
@@ -141,10 +140,9 @@ class PokemonBase(MixinDocument):
 
     @property
     def gender(self) -> str:
-        gender = self._gender
-        if gender is None:
-            gender = generate_gender(self.species, objectid=self.id)
-        return gender
+        if self._gender is None:
+            return generate_gender(self.species, _id=self.id)
+        return self._gender
 
     @property
     def gender_icon(self):
