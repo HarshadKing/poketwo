@@ -220,7 +220,7 @@ class Valentines(commands.Cog):
                 case "event_pokemon" | "non-event" | "non-event-shiny":
                     pokemon = await self.make_reward_pokemon(reward, ctx.author)
                     pokemon_obj = self.bot.mongo.Pokemon.build_from_mongo(pokemon)
-                    text.append(f"- {pokemon_obj:liP}")
+                    text.append(f"- {pokemon_obj:liPg}")
                     inserts.append(pokemon)
 
         await self.bot.mongo.update_member(ctx.author, update)

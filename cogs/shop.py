@@ -158,7 +158,7 @@ class Shop(commands.Cog):
 
                 pokemon = await self.bot.mongo.make_pokemon(member, species, level=level, shiny=shiny, **iv_fields)
 
-                text.append(f"{self.bot.mongo.Pokemon.build_from_mongo(pokemon):lni} ({sum(ivs) / 186:.2%} IV)")
+                text.append(f"{self.bot.mongo.Pokemon.build_from_mongo(pokemon):lngiP}")
 
                 added_pokemon.append(pokemon)
 
