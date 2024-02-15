@@ -106,34 +106,10 @@ class Valentines(commands.Cog):
         }
         return {k: [self.bot.data.species_by_number(i) for i in v] for k, v in p.items()}
 
-    async def make_pokemon(
-        self, owner: discord.User | discord.Member, member: Member, *, species: Species, shiny_boost: Optional[int] = 1
-    ):
-        ivs = [mongo.random_iv() for _ in range(6)]
-        shiny = member.determine_shiny(species, boost=shiny_boost)
-        return {
-            "owner_id": member.id,
-            "owned_by": "user",
-            "species_id": species.id,
-            "level": min(max(int(random.normalvariate(20, 10)), 1), 50),
-            "xp": 0,
-            "nature": mongo.random_nature(),
-            "iv_hp": ivs[0],
-            "iv_atk": ivs[1],
-            "iv_defn": ivs[2],
-            "iv_satk": ivs[3],
-            "iv_sdef": ivs[4],
-            "iv_spd": ivs[5],
-            "iv_total": sum(ivs),
-            "shiny": shiny,
-            "idx": await self.bot.mongo.fetch_next_idx(owner),
-        }
-
     async def make_reward_pokemon(
         self,
         reward: str,
         user: discord.User | discord.Member,
-        member: Member,
     ) -> PokemonBase:
         """Function to build specific kinds of pokémon."""
 
@@ -150,7 +126,7 @@ class Valentines(commands.Cog):
                     shiny_boost = 4096  # Guarantee shiny
 
         species = random.choices(population, weights, k=1)[0]
-        return await self.make_pokemon(user, member, species=species, shiny_boost=shiny_boost)
+        return await self.bot.mongo.make_pokemon(user, species, shiny_boost=shiny_boost)
 
     @checks.has_started()
     @commands.group(aliases=("event", "ev"), invoke_without_command=True, case_insensitive=True)
@@ -162,12 +138,12 @@ class Valentines(commands.Cog):
             title=f"Valentine's 2024",
             description=dedent(
                 f"""
-            In between the cold days there is a special day full of love, Valentine's Day! 
-            During this 2 week event you can catch several Winter Pokémon in the wild and find Valentine's chocolate boxes along the way!
+                In between the cold days there is a special day full of love, Valentine's Day!
+                During this 2 week event you can catch several Winter Pokémon in the wild and find Valentine's chocolate boxes along the way!
 
-            During the event, every 10 catches earns you a {FlavorStrings.box:b}. 
-            To open a box, use {CMD_OPEN.format(prefix)}
-            """
+                During the event, every 10 catches earns you a {FlavorStrings.box:b}.
+                To open a box, use {CMD_OPEN.format(prefix)}
+                """
             ),
             color=EMBED_COLOR,
         )
@@ -242,7 +218,7 @@ class Valentines(commands.Cog):
                     text.append(f"- {count} {flavor:!e{'' if count == 1 else 's'}}")
                     update["$inc"]["redeems"] += count
                 case "event_pokemon" | "non-event" | "non-event-shiny":
-                    pokemon = await self.make_reward_pokemon(reward, ctx.author, member)
+                    pokemon = await self.make_reward_pokemon(reward, ctx.author)
                     pokemon_obj = self.bot.mongo.Pokemon.build_from_mongo(pokemon)
                     text.append(f"- {pokemon_obj:liP}")
                     inserts.append(pokemon)
