@@ -101,6 +101,7 @@ class Pokemon(commands.Cog):
     @flags.add_flag("--alolan", action="store_true")
     @flags.add_flag("--galarian", action="store_true")
     @flags.add_flag("--hisuian", action="store_true")
+    @flags.add_flag("--paldean", action="store_true")
     @flags.add_flag("--paradox", action="store_true")
     @flags.add_flag("--mythical", action="store_true")
     @flags.add_flag("--legendary", action="store_true")
@@ -280,6 +281,7 @@ class Pokemon(commands.Cog):
     @flags.add_flag("--alolan", action="store_true")
     @flags.add_flag("--galarian", action="store_true")
     @flags.add_flag("--hisuian", action="store_true")
+    @flags.add_flag("--paldean", action="store_true")
     @flags.add_flag("--paradox", action="store_true")
     @flags.add_flag("--mythical", action="store_true")
     @flags.add_flag("--legendary", action="store_true")
@@ -380,6 +382,7 @@ class Pokemon(commands.Cog):
     @flags.add_flag("--alolan", action="store_true")
     @flags.add_flag("--galarian", action="store_true")
     @flags.add_flag("--hisuian", action="store_true")
+    @flags.add_flag("--paldean", action="store_true")
     @flags.add_flag("--paradox", action="store_true")
     @flags.add_flag("--mythical", action="store_true")
     @flags.add_flag("--legendary", action="store_true")
@@ -658,7 +661,7 @@ class Pokemon(commands.Cog):
             aggregations.append({"$match": {map_field("species_id"): {"$in": rarity}}})
 
         forms = []
-        for x in ("alolan", "galarian", "hisuian"):
+        for x in ("alolan", "galarian", "hisuian", "paldean"):
             if x in flags and flags[x]:
                 forms += getattr(self.bot.data, f"list_{x}")
         if forms:
@@ -854,6 +857,7 @@ class Pokemon(commands.Cog):
     @flags.add_flag("--alolan", action="store_true")
     @flags.add_flag("--galarian", action="store_true")
     @flags.add_flag("--hisuian", action="store_true")
+    @flags.add_flag("--paldean", action="store_true")
     @flags.add_flag("--paradox", action="store_true")
     @flags.add_flag("--mythical", action="store_true")
     @flags.add_flag("--legendary", action="store_true")
@@ -971,6 +975,7 @@ class Pokemon(commands.Cog):
     @flags.add_flag("--alolan", action="store_true")
     @flags.add_flag("--galarian", action="store_true")
     @flags.add_flag("--hisuian", action="store_true")
+    @flags.add_flag("--paldean", action="store_true")
     @flags.add_flag("--paradox", action="store_true")
     @flags.add_flag("--mythical", action="store_true")
     @flags.add_flag("--legendary", action="store_true")

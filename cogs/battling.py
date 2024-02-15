@@ -715,6 +715,7 @@ class Battling(commands.Cog):
     @flags.add_flag("--alolan", action="store_true")
     @flags.add_flag("--galarian", action="store_true")
     @flags.add_flag("--hisuian", action="store_true")
+    @flags.add_flag("--paldean", action="store_true")
     @flags.add_flag("--paradox", action="store_true")
     @flags.add_flag("--mythical", action="store_true")
     @flags.add_flag("--legendary", action="store_true")
@@ -741,7 +742,7 @@ class Battling(commands.Cog):
 
         forms = [
             s
-            for form in ("alolan", "galarian", "hisuian", "mega", "event")
+            for form in ("alolan", "galarian", "hisuian", "paldean", "mega", "event")
             for s in getattr(self.bot.data, f"list_{form}")
             if flags[form]
         ]
