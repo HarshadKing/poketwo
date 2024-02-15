@@ -313,9 +313,12 @@ class Spawning(commands.Cog):
             await self.bot.redis.delete(f"catches:{ctx.author.id}")
 
         species_id = await self.bot.redis.hget("wild", ctx.channel.id)
-        gender = await self.bot.redis.hget("gender", ctx.channel.id)
-        gender = gender.decode("ASCII")
         species = self.bot.data.species_by_number(int(species_id))
+        gender = await self.bot.redis.hget("gender", ctx.channel.id)
+        if gender is not None:
+            gender = gender.decode("ASCII")
+        else:
+            gender = "Male"
 
         if models.deaccent(guess.lower().replace("′", "'")) not in species.correct_guesses:
             return await ctx.send("That is the wrong pokémon!")
