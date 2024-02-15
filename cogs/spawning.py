@@ -318,7 +318,7 @@ class Spawning(commands.Cog):
         if gender is not None:
             gender = gender.decode("ASCII")
         else:
-            gender = "Male"
+            gender = genders.generate_gender(species)
 
         if models.deaccent(guess.lower().replace("′", "'")) not in species.correct_guesses:
             return await ctx.send("That is the wrong pokémon!")
