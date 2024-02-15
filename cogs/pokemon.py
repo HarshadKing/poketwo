@@ -605,6 +605,9 @@ class Pokemon(commands.Cog):
 
     @cache
     def gender_filter(self, gender_field, gender):
+        if gender.capitalize() not in GENDER_TYPES.values():
+            return {"$match": {"gender": gender.capitalize()}}
+
         if gender.casefold() == "unknown":
             return {
                 "$match": {"species_id": {"$in": [s.id for s in self.bot.data.pokemon.values() if s.gender_rate == -1]}}
