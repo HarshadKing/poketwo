@@ -727,14 +727,19 @@ class Mongo(commands.Cog):
         await self.bot.redis.hdel(f"db:member", int(member))
         return result
 
-    async def update_pokemon(self, pokemon, update):
-        if hasattr(pokemon, "id"):
-            pokemon = pokemon.id
-        if hasattr(pokemon, "_id"):
-            pokemon = pokemon._id
+    async def update_pokemon(self, pokemon: Pokemon | dict, update: dict):
         if isinstance(pokemon, dict) and "_id" in pokemon:
-            pokemon = pokemon["_id"]
-        return await self.db.pokemon.update_one({"_id": pokemon}, update)
+            pokemon = self.Pokemon.build_from_mongo(pokemon)
+        if hasattr(pokemon, "id"):
+            pokemon_id = pokemon.id
+        if hasattr(pokemon, "_id"):
+            pokemon_id = pokemon._id
+
+        if not pokemon._gender and "gender" not in update:
+            _set = update.setdefault("$set", {})
+            _set["gender"] = pokemon.gender
+
+        return await self.db.pokemon.update_one({"_id": pokemon_id}, update)
 
     async def fetch_pokemon(self, member: discord.Member, idx: int):
         if isinstance(idx, ObjectId):
