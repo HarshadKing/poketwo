@@ -1042,7 +1042,7 @@ class Pokemon(commands.Cog):
             menu.maxn = max(x.idx for x in items)
 
         def format_item(menu, p):
-            return f"`{padn(p, menu.maxn)}`　**{p:nif}**　•　Lvl. {p.level} {p.gender_icon}　•　{p.iv_total / 186:.2%}"
+            return f"`{padn(p, menu.maxn)}`　**{p:nifg}**　•　Lvl. {p.level}　•　{p.iv_total / 186:.2%}"
 
         try:
             count = await self.bot.mongo.fetch_pokemon_count(
