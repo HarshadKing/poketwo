@@ -7,6 +7,7 @@ from datetime import datetime
 from functools import cache
 from operator import itemgetter
 
+import pymongo
 from discord.errors import DiscordException
 from discord.ext import commands
 from pymongo import UpdateOne
@@ -714,9 +715,6 @@ class Pokemon(commands.Cog):
         if "ends" in flags and flags["ends"] is not None:
             aggregations.append({"$match": {"auction_data.ends": {"$lt": datetime.utcnow() + flags["ends"]}}})
 
-        if "gender" in flags and flags["gender"]:
-            aggregations.append(self.gender_filter(map_field("gender"), flags["gender"][0]))
-
         # Numerical flags
 
         for flag, expr in constants.FILTER_BY_NUMERICAL.items():
@@ -763,6 +761,10 @@ class Pokemon(commands.Cog):
                 asc = -1 if order_by in constants.DEFAULT_DESCENDING else 1
 
             aggregations.append({"$sort": {map_field(constants.SORTING_FUNCTIONS[order_by]): asc}})
+
+        # put gender after sorting
+        if "gender" in flags and flags["gender"]:
+            aggregations.append(self.gender_filter(map_field("gender"), flags["gender"][0]))
 
         if "skip" in flags and flags["skip"] is not None:
             aggregations.append({"$skip": flags["skip"]})
@@ -1034,7 +1036,12 @@ class Pokemon(commands.Cog):
         def format_item(menu, p):
             return f"`{padn(p, menu.maxn)}`　**{p:nif}**　•　Lvl. {p.level} {p.gender_icon}　•　{p.iv_total / 186:.2%}"
 
-        count = await self.bot.mongo.fetch_pokemon_count(ctx.author, aggregations)
+        try:
+            count = await self.bot.mongo.fetch_pokemon_count(
+                ctx.author, aggregations, max_time_ms=5000 if flags["gender"] else None
+            )
+        except pymongo.errors.ExecutionTimeout:
+            count = None
         pokemon = self.bot.mongo.fetch_pokemon_list(ctx.author, aggregations)
 
         pages = pagination.ContinuablePages(

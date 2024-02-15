@@ -594,7 +594,8 @@ class Mongo(commands.Cog):
         async for x in self.db.pokemon.aggregate(pipeline, allowDiskUse=True):
             yield self.bot.mongo.Pokemon.build_from_mongo(x)
 
-    async def fetch_pokemon_count(self, member: discord.Member | Member, aggregations=[]):
+    async def fetch_pokemon_count(self, member: discord.Member | Member, aggregations=[], *, max_time_ms=None):
+        kwargs = {"maxTimeMS": max_time_ms} if max_time_ms else {}
         result = await self.db.pokemon.aggregate(
             [
                 {"$match": {"owner_id": int(member.id), "owned_by": "user"}},
@@ -602,6 +603,7 @@ class Mongo(commands.Cog):
                 {"$count": "num_matches"},
             ],
             allowDiskUse=True,
+            **kwargs,
         ).to_list(None)
 
         if len(result) == 0:
