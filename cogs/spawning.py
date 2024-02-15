@@ -234,7 +234,7 @@ class Spawning(commands.Cog):
                     embed.set_image(url="attachment://pokemon.jpg")
 
         if image is None:
-            gender_suffix = GENDER_IMAGE_SUFFIXES.get(gender.lower(), "")
+            gender_suffix = GENDER_IMAGE_SUFFIXES.get(gender.lower(), "") if species.has_gender_differences else ""
             path = f"data/images/{species.id}{gender_suffix}.png"
             image = discord.File(path, filename="pokemon.png")
             embed.set_image(url="attachment://pokemon.png")
