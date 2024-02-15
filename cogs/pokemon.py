@@ -1217,20 +1217,20 @@ class Pokemon(commands.Cog):
                 if species is None:
                     return await ctx.send(f"Could not find a pokémon matching `{search_or_page}`.")
 
-                gender_unknown = species.gender_rate == -1
-                if gender_unknown and searched_gender is not None:
-                    return await ctx.send(f"Invalid gender provided for that pokémon.")
-                elif gender_unknown:
-                    gender = "Unknown"
-                elif species.has_gender_differences:
-                    # Specified gender if any, otherwise default to "Male"
-                    # TODO: It doesn't make sense to default to Male because of pokemon
-                    # TODO: whose default is Female, such as Nidoran-F. In the future
-                    # TODO: we should rely on `species.default_gender`, but not possible
-                    # TODO: at this point with how little time we have.
-                    gender = searched_gender or "Male"
-                else:
-                    gender = None
+            gender_unknown = species.gender_rate == -1
+            if gender_unknown and searched_gender is not None:
+                return await ctx.send(f"Invalid gender provided for that pokémon.")
+            elif gender_unknown:
+                gender = "Unknown"
+            elif species.has_gender_differences:
+                # Specified gender if any, otherwise default to "Male"
+                # TODO: It doesn't make sense to default to Male because of pokemon
+                # TODO: whose default is Female, such as Nidoran-F. In the future
+                # TODO: we should rely on `species.default_gender`, but not possible
+                # TODO: at this point with how little time we have.
+                gender = searched_gender or "Male"
+            else:
+                gender = None
 
             member = await self.bot.mongo.fetch_pokedex(ctx.author, species.dex_number, species.dex_number + 1)
 
