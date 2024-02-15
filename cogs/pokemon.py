@@ -2,14 +2,18 @@ import contextlib
 import itertools
 import math
 import typing
+from collections import defaultdict
 from datetime import datetime
+from functools import cache
 from operator import itemgetter
 
+import pymongo
 from discord.errors import DiscordException
 from discord.ext import commands
 from pymongo import UpdateOne
 
-from helpers import checks, constants, converters, flags, pagination
+from data.constants import GENDER_TYPES
+from helpers import checks, constants, converters, flags, genders, pagination
 
 
 def isfloat(x):
@@ -111,6 +115,7 @@ class Pokemon(commands.Cog):
     @flags.add_flag("--region", "--r", type=str, action="append")
     @flags.add_flag("--move", nargs="+", action="append")
     @flags.add_flag("--learns", nargs="*", action="append")
+    @flags.add_flag("--gender", "--g", type=str, action="append")
 
     # IV
     @flags.add_flag("--level", nargs="+", action="append")
@@ -288,6 +293,7 @@ class Pokemon(commands.Cog):
     @flags.add_flag("--region", "--r", type=str, action="append")
     @flags.add_flag("--move", nargs="+", action="append")
     @flags.add_flag("--learns", nargs="*", action="append")
+    @flags.add_flag("--gender", "--g", type=str, action="append")
 
     # IV
     @flags.add_flag("--level", nargs="+", action="append")
@@ -345,7 +351,7 @@ class Pokemon(commands.Cog):
         elif unfavnum == 0:
             return await ctx.reply(
                 f"Found no unfavorited pokémon within this selection.\nTo mass unfavorite a pokemon, please use `{ctx.clean_prefix}unfavoriteall`.",
-                mention_author=mention_author
+                mention_author=mention_author,
             )
 
         # Fetch pokemon list
@@ -364,7 +370,10 @@ class Pokemon(commands.Cog):
             {"$set": {"favorite": True}},
         )
 
-        await ctx.reply(f"Favorited your {unfavnum} unfavorited pokemon.\nAll {num} selected pokemon are now favorited.", mention_author=mention_author)
+        await ctx.reply(
+            f"Favorited your {unfavnum} unfavorited pokemon.\nAll {num} selected pokemon are now favorited.",
+            mention_author=mention_author,
+        )
 
     # Filter
     @flags.add_flag("--shiny", action="store_true")
@@ -385,6 +394,7 @@ class Pokemon(commands.Cog):
     @flags.add_flag("--region", "--r", type=str, action="append")
     @flags.add_flag("--move", nargs="+", action="append")
     @flags.add_flag("--learns", nargs="*", action="append")
+    @flags.add_flag("--gender", "--g", type=str, action="append")
 
     # IV
     @flags.add_flag("--level", nargs="+", action="append")
@@ -459,7 +469,7 @@ class Pokemon(commands.Cog):
 
         await ctx.reply(
             f"Unfavorited your {favnum} favorited pokemon.\nAll {num} selected pokemon are now unfavorited.",
-            mention_author=mention_author
+            mention_author=mention_author,
         )
 
     @checks.has_started()
@@ -500,16 +510,15 @@ class Pokemon(commands.Cog):
 
             embed = self.bot.Embed(color=pokemon.color or 0x9CCFFF, title=f"{pokemon:lnf}")
 
-            if pokemon.shiny:
-                embed.set_image(url=pokemon.species.shiny_image_url)
-            else:
-                embed.set_image(url=pokemon.species.image_url)
+            image = pokemon.image_url
+            embed.set_image(url=image)
 
             embed.set_thumbnail(url=ctx.author.display_avatar.url)
 
             info = (
                 f"**XP:** {pokemon.xp}/{pokemon.max_xp}",
                 f"**Nature:** {pokemon.nature}",
+                f"**Gender:** {pokemon.gender}",
             )
 
             embed.add_field(name="Details", value="\n".join(info), inline=False)
@@ -593,6 +602,41 @@ class Pokemon(commands.Cog):
             return None
 
         return ops
+
+    @cache
+    def gender_filter(self, gender_field, gender):
+        if gender.casefold() == "unknown":
+            return {
+                "$match": {"species_id": {"$in": [s.id for s in self.bot.data.pokemon.values() if s.gender_rate == -1]}}
+            }
+
+        op = "$lt" if gender == "male" else "$gte"
+        by_gender_ratio = defaultdict(list)
+
+        for k, v in self.bot.data.pokemon.items():
+            if v.gender_rate == -1:
+                continue
+            if k in genders.MALE_OVERRIDES:
+                by_gender_ratio[100, 0].append(k)
+            else:
+                by_gender_ratio[tuple(v.gender_ratios)].append(k)
+
+        cases = [
+            {
+                gender_field: {"$exists": False},
+                "species_id": {"$in": v},
+                "$expr": {
+                    op: [
+                        # times 1000 because mongodb has milliseconds not seconds
+                        {"$mod": [{"$toLong": {"$toDate": "$_id"}}, int(k[0] * 10 + k[1] * 10) * 1000]},
+                        int(k[0] * 10) * 1000,
+                    ]
+                },
+            }
+            for k, v in by_gender_ratio.items()
+        ]
+
+        return {"$match": {"$or": [{gender_field: gender.title()}, *cases]}}
 
     async def create_filter(self, flags, ctx, order_by=None, map_field=lambda x: x):
         aggregations = []
@@ -718,6 +762,10 @@ class Pokemon(commands.Cog):
 
             aggregations.append({"$sort": {map_field(constants.SORTING_FUNCTIONS[order_by]): asc}})
 
+        # put gender after sorting
+        if "gender" in flags and flags["gender"]:
+            aggregations.append(self.gender_filter(map_field("gender"), flags["gender"][0]))
+
         if "skip" in flags and flags["skip"] is not None:
             aggregations.append({"$skip": flags["skip"]})
 
@@ -739,7 +787,6 @@ class Pokemon(commands.Cog):
         mons = list()
 
         for pokemon in args:
-
             if pokemon is not None:
                 # can't release selected/fav
 
@@ -817,6 +864,7 @@ class Pokemon(commands.Cog):
     @flags.add_flag("--region", "--r", type=str, action="append")
     @flags.add_flag("--move", nargs="+", action="append")
     @flags.add_flag("--learns", nargs="*", action="append")
+    @flags.add_flag("--gender", "--g", type=str, action="append")
 
     # IV
     @flags.add_flag("--level", nargs="+", action="append")
@@ -870,7 +918,10 @@ class Pokemon(commands.Cog):
         num = await self.bot.mongo.fetch_pokemon_count(ctx.author, aggregations=aggregations)
 
         if num == 0:
-            return await ctx.reply("Found no pokémon matching this search (excluding favorited and selected pokémon).", mention_author=mention_author)
+            return await ctx.reply(
+                "Found no pokémon matching this search (excluding favorited and selected pokémon).",
+                mention_author=mention_author,
+            )
 
         # confirm
 
@@ -907,7 +958,7 @@ class Pokemon(commands.Cog):
 
         await ctx.reply(
             f"You have released {result.modified_count} pokémon. You received {2*result.modified_count:,} Pokécoins!",
-            mention_author=mention_author
+            mention_author=mention_author,
         )
         self.bot.dispatch("release", ctx.author, result.modified_count)
 
@@ -931,6 +982,7 @@ class Pokemon(commands.Cog):
     @flags.add_flag("--region", "--r", type=str, action="append")
     @flags.add_flag("--move", nargs="+", action="append")
     @flags.add_flag("--learns", nargs="*", action="append")
+    @flags.add_flag("--gender", "--g", type=str, action="append")
 
     # IV
     @flags.add_flag("--level", nargs="+", action="append")
@@ -982,9 +1034,14 @@ class Pokemon(commands.Cog):
             menu.maxn = max(x.idx for x in items)
 
         def format_item(menu, p):
-            return f"`{padn(p, menu.maxn)}`　**{p:nif}**　•　Lvl. {p.level}　•　{p.iv_total / 186:.2%}"
+            return f"`{padn(p, menu.maxn)}`　**{p:nif}**　•　Lvl. {p.level} {p.gender_icon}　•　{p.iv_total / 186:.2%}"
 
-        count = await self.bot.mongo.fetch_pokemon_count(ctx.author, aggregations)
+        try:
+            count = await self.bot.mongo.fetch_pokemon_count(
+                ctx.author, aggregations, max_time_ms=5000 if flags["gender"] else None
+            )
+        except pymongo.errors.ExecutionTimeout:
+            count = None
         pokemon = self.bot.mongo.fetch_pokemon_list(ctx.author, aggregations)
 
         pages = pagination.ContinuablePages(
@@ -1073,7 +1130,9 @@ class Pokemon(commands.Cog):
                     return False
                 if flags["region"] and key not in self.bot.data.list_region(flags["region"]):
                     return False
-                if flags["learns"] and key not in [i for x in flags["learns"] for i in self.bot.data.list_move(" ".join(x))]:
+                if flags["learns"] and key not in [
+                    i for x in flags["learns"] for i in self.bot.data.list_move(" ".join(x))
+                ]:
                     return False
 
                 return True
@@ -1093,7 +1152,9 @@ class Pokemon(commands.Cog):
 
                 # Send embed
 
-                embed = self.bot.Embed(title=f"Your pokédex", description=f"You've caught {num} out of {total_count} pokémon!")
+                embed = self.bot.Embed(
+                    title=f"Your pokédex", description=f"You've caught {num} out of {total_count} pokémon!"
+                )
 
                 embed.set_footer(text=f"Showing {pgstart + 1}–{pgend} out of {len(pokedex)}.")
 
@@ -1130,20 +1191,43 @@ class Pokemon(commands.Cog):
 
         else:
             shiny = False
+            searched_gender = None
 
             if search_or_page[0] in "Nn#" and search_or_page[1:].isdigit():
                 species = self.bot.data.species_by_number(int(search_or_page[1:]))
 
             else:
-                search = search_or_page
+                # Parse search string
+                search_parts = search_or_page.lower().split()
 
-                if search_or_page.lower().startswith("shiny "):
+                # Check if shiny is queried
+                if search_parts[0] == "shiny":
                     shiny = True
-                    search = search_or_page[6:]
+                    search_parts.pop(0)
 
+                # Check if a specific gender is queried
+                if search_parts[0].capitalize() in GENDER_TYPES.values():
+                    searched_gender = search_parts.pop(0).capitalize()
+
+                search = " ".join(search_parts)
                 species = self.bot.data.species_by_name(search)
                 if species is None:
-                    return await ctx.send(f"Could not find a pokemon matching `{search_or_page}`.")
+                    return await ctx.send(f"Could not find a pokémon matching `{search_or_page}`.")
+
+                gender_unknown = species.gender_rate == -1
+                if gender_unknown and searched_gender is not None:
+                    return await ctx.send(f"Invalid gender provided for that pokémon.")
+                elif gender_unknown:
+                    gender = "Unknown"
+                elif species.has_gender_differences:
+                    # Specified gender if any, otherwise default to "Male"
+                    # TODO: It doesn't make sense to default to Male because of pokemon
+                    # TODO: whose default is Female, such as Nidoran-F. In the future
+                    # TODO: we should rely on `species.default_gender`, but not possible
+                    # TODO: at this point with how little time we have.
+                    gender = searched_gender or "Male"
+                else:
+                    gender = None
 
             member = await self.bot.mongo.fetch_pokedex(ctx.author, species.dex_number, species.dex_number + 1)
 
@@ -1174,12 +1258,6 @@ class Pokemon(commands.Cog):
             if species.evolution_text:
                 embed.add_field(name="Evolution", value=species.evolution_text, inline=False)
 
-            if shiny:
-                embed.title = f"#{species.dex_number} — ✨ {species}"
-                embed.set_image(url=species.shiny_image_url)
-            else:
-                embed.set_image(url=species.image_url)
-
             base_stats = (
                 f"**HP:** {species.base_stats.hp}",
                 f"**Attack:** {species.base_stats.atk}",
@@ -1189,6 +1267,11 @@ class Pokemon(commands.Cog):
                 f"**Speed:** {species.base_stats.spd}",
             )
 
+            if species.gender_rate and species.gender_rate != -1:
+                gender_rate = f"{constants.GENDER_EMOTES['male']} {species.gender_ratios[0]}% - {constants.GENDER_EMOTES['female']} {species.gender_ratios[1]}%"
+            else:
+                gender_rate = "Gender unknown"
+
             embed.add_field(name="Types", value="\n".join(species.types))
             embed.add_field(name="Region", value=species.region.title())
             embed.add_field(name="Catchable", value="Yes" if species.catchable else "No")
@@ -1196,6 +1279,7 @@ class Pokemon(commands.Cog):
             embed.add_field(name="Base Stats", value="\n".join(base_stats))
             embed.add_field(name="Names", value="\n".join(f"{x} {y}" for x, y in species.names))
             embed.add_field(name="Appearance", value=f"Height: {species.height} m\nWeight: {species.weight} kg")
+            embed.add_field(name="Gender Ratio", value=f"{gender_rate}")
 
             text = "You haven't caught this pokémon yet!"
             if str(species.dex_number) in member.pokedex:
@@ -1206,7 +1290,9 @@ class Pokemon(commands.Cog):
 
             embed.set_footer(text=text)
 
-            await ctx.send(embed=embed)
+            # Adds the correct button settings to the embed
+            view = pagination.DexButtons(ctx, embed=embed, species=species, is_shiny=shiny, gender=gender)
+            await ctx.send(embed=view.get_embed(), view=view)
 
     @checks.has_started()
     @checks.is_not_in_trade()
@@ -1250,10 +1336,7 @@ class Pokemon(commands.Cog):
                 embed.description += f"\n**Your {name} is evolving!**\nYour {name} has turned into a {evo}!"
 
             if len(args) == 1:
-                if pokemon.shiny:
-                    embed.set_thumbnail(url=evo.shiny_image_url)
-                else:
-                    embed.set_thumbnail(url=evo.image_url)
+                embed.set_thumbnail(url=evo.get_image_url(pokemon.shiny, pokemon.gender))
 
             evolved.append((pokemon, evo))
 

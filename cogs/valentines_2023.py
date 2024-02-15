@@ -67,7 +67,7 @@ class Valentines(commands.Cog):
             description="Cupid time is almost here, but wait...? He forgot his bow and arrow! Decidueye is taking his place in the Pokétwo world, celebrating Valentine's and spreading love!",
             color=0xFF6F77,
         )
-        embed.set_thumbnail(url=species.image_url)
+        embed.set_thumbnail(url=species.get_image_url())
         embed.add_field(
             name="Cupid Decidueye Gifts",
             value=f"`{ctx.clean_prefix}valentine gift <ID/@User> <message>`\n"
@@ -85,33 +85,12 @@ class Valentines(commands.Cog):
         await ctx.send(embed=embed)
 
     async def generate_pokemon(self, user, nickname):
-        user_data = await self.bot.mongo.fetch_member_info(user)
+        member = await self.bot.mongo.fetch_member_info(user)
 
         species = self.bot.data.species_by_number(50089)
-        shiny = user_data.determine_shiny(species)
-        level = min(max(int(random.normalvariate(20, 10)), 1), 100)
-        ivs = [mongo.random_iv() for i in range(6)]
 
         return self.bot.mongo.Pokemon.build_from_mongo(
-            {
-                "owner_id": user.id,
-                "owned_by": "user",
-                "species_id": species.id,
-                "level": level,
-                "xp": 0,
-                "nature": mongo.random_nature(),
-                "iv_hp": ivs[0],
-                "iv_atk": ivs[1],
-                "iv_defn": ivs[2],
-                "iv_satk": ivs[3],
-                "iv_sdef": ivs[4],
-                "iv_spd": ivs[5],
-                "iv_total": sum(ivs),
-                "moves": [],
-                "shiny": shiny,
-                "idx": await self.bot.mongo.fetch_next_idx(user),
-                "nickname": nickname,
-            }
+            await self.bot.mongo.make_pokemon(member, species, nickname=nickname)
         )
 
     @checks.has_started()

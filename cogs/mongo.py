@@ -2,6 +2,7 @@ import math
 import pickle
 import random
 from datetime import datetime, timedelta, timezone
+from typing import Any, Optional
 
 import discord
 import pymongo
@@ -13,11 +14,21 @@ from umongo import Document, EmbeddedDocument, Instance, MixinDocument, fields
 
 from data import models
 from helpers import constants
+from helpers.genders import generate_gender
+from lib.probability import random_iv_composition
 
 random_iv = lambda: random.randint(0, 31)
 random_nature = lambda: random.choice(constants.NATURES)
 
 # Instance
+
+
+def iv_percent_to_total(percent: float) -> int:
+    return math.ceil(percent / 100 * 186)
+
+
+def iv_total_to_percent(total_iv: int, *, round_to: Optional[int] = 2) -> float:
+    return round(total_iv / 186 * 100, round_to)
 
 
 def calc_stat(pokemon, stat):
@@ -45,6 +56,7 @@ class PokemonBase(MixinDocument):
     xp = fields.IntegerField(required=True)
     nature = fields.StringField(required=True)
     shiny = fields.BooleanField(required=True)
+    _gender = fields.StringField(attribute="gender", default=None)
 
     # Stats
     iv_hp = fields.IntegerField(required=True)
@@ -69,7 +81,7 @@ class PokemonBase(MixinDocument):
     stages = None
 
     def __format__(self, spec):
-        if self.shiny:
+        if self.shiny and "!s" not in spec:
             name = "✨ "
         else:
             name = ""
@@ -88,6 +100,9 @@ class PokemonBase(MixinDocument):
             name = sprite + " " + name
 
         name += str(self.species)
+
+        if "g" in spec:
+            name += f" {self.gender_icon}"
 
         if "P" in spec:
             name += f" ({self.iv_percentage:.2%})"
@@ -122,6 +137,20 @@ class PokemonBase(MixinDocument):
     @property
     def species(self):
         return self.bot.data.species_by_number(self.species_id)
+
+    @property
+    def gender(self) -> str:
+        if self._gender is None:
+            return generate_gender(self.species, _id=self.id)
+        return self._gender
+
+    @property
+    def gender_icon(self):
+        return constants.GENDER_EMOTES[self.gender.lower()]
+
+    @property
+    def image_url(self) -> str:
+        return self.species.get_image_url(self.shiny, self.gender)
 
     @property
     def max_xp(self):
@@ -204,6 +233,8 @@ class PokemonBase(MixinDocument):
             if evo.trigger.relative_stats == -1 and self.defn <= self.atk:
                 can = False
             if evo.trigger.relative_stats == 0 and self.atk != self.defn:
+                can = False
+            if evo.trigger.gender and evo.trigger.gender != self.gender:
                 can = False
 
             if can:
@@ -480,12 +511,12 @@ class Mongo(commands.Cog):
             setattr(self, x, instance.register(g[x]))
             getattr(self, x).bot = bot
 
-    async def fetch_member_info(self, member: discord.Member):
-        val = await self.bot.redis.hget(f"db:member", member.id)
+    async def fetch_member_info(self, member: discord.Member | Member):
+        val = await self.bot.redis.hget(f"db:member", int(int(member.id)))
         if val is None:
-            val = await self.Member.find_one({"id": member.id}, {"pokemon": 0, "pokedex": 0})
+            val = await self.Member.find_one({"id": int(member.id)}, {"pokemon": 0, "pokedex": 0})
             v = "" if val is None else pickle.dumps(val.to_mongo())
-            await self.bot.redis.hset(f"db:member", member.id, v)
+            await self.bot.redis.hset(f"db:member", int(member.id), v)
         elif len(val) == 0:
             return None
         else:
@@ -502,31 +533,31 @@ class Mongo(commands.Cog):
 
         return val
 
-    async def fetch_next_idx(self, member: discord.Member, reserve=1):
+    async def fetch_next_idx(self, member: discord.Member | Member, reserve=1):
         result = await self.db.member.find_one_and_update(
-            {"_id": member.id},
+            {"_id": int(member.id)},
             {"$inc": {"next_idx": reserve}},
             projection={"next_idx": 1},
         )
-        await self.bot.redis.hdel(f"db:member", member.id)
+        await self.bot.redis.hdel(f"db:member", int(member.id))
         return result["next_idx"]
 
-    async def reset_idx(self, member: discord.Member, value):
+    async def reset_idx(self, member: discord.Member | Member, value):
         result = await self.db.member.find_one_and_update(
-            {"_id": member.id},
+            {"_id": int(member.id)},
             {"$set": {"next_idx": value}},
             projection={"next_idx": 1},
         )
-        await self.bot.redis.hdel(f"db:member", member.id)
+        await self.bot.redis.hdel(f"db:member", int(member.id))
         return result["next_idx"]
 
-    async def fetch_pokedex(self, member: discord.Member, start: int, end: int):
+    async def fetch_pokedex(self, member: discord.Member | Member, start: int, end: int):
         filter_obj = {}
 
         for i in range(start, end):
             filter_obj[f"pokedex.{i}"] = 1
 
-        return await self.Member.find_one({"id": member.id}, filter_obj)
+        return await self.Member.find_one({"id": int(member.id)}, filter_obj)
 
     def fetch_market_list(self, aggregations=[]):
         pipeline = [
@@ -555,22 +586,24 @@ class Mongo(commands.Cog):
 
         return result[0]["num_matches"]
 
-    async def fetch_pokemon_list(self, member: discord.Member, aggregations=[]):
+    async def fetch_pokemon_list(self, member: discord.Member | Member, aggregations=[]):
         pipeline = [
-            {"$match": {"owner_id": member.id, "owned_by": "user"}},
+            {"$match": {"owner_id": int(member.id), "owned_by": "user"}},
             *aggregations,
         ]
         async for x in self.db.pokemon.aggregate(pipeline, allowDiskUse=True):
             yield self.bot.mongo.Pokemon.build_from_mongo(x)
 
-    async def fetch_pokemon_count(self, member: discord.Member, aggregations=[]):
+    async def fetch_pokemon_count(self, member: discord.Member | Member, aggregations=[], *, max_time_ms=None):
+        kwargs = {"maxTimeMS": max_time_ms} if max_time_ms else {}
         result = await self.db.pokemon.aggregate(
             [
-                {"$match": {"owner_id": member.id, "owned_by": "user"}},
+                {"$match": {"owner_id": int(member.id), "owned_by": "user"}},
                 *aggregations,
                 {"$count": "num_matches"},
             ],
             allowDiskUse=True,
+            **kwargs,
         ).to_list(None)
 
         if len(result) == 0:
@@ -578,10 +611,10 @@ class Mongo(commands.Cog):
 
         return result[0]["num_matches"]
 
-    async def fetch_pokedex_count(self, member: discord.Member, aggregations=[]):
+    async def fetch_pokedex_count(self, member: discord.Member | Member, aggregations=[]):
         result = await self.db.member.aggregate(
             [
-                {"$match": {"_id": member.id}},
+                {"$match": {"_id": int(member.id)}},
                 {"$project": {"pokedex": {"$objectToArray": "$pokedex"}}},
                 {"$unwind": {"path": "$pokedex"}},
                 {"$replaceRoot": {"newRoot": "$pokedex"}},
@@ -596,10 +629,10 @@ class Mongo(commands.Cog):
 
         return result[0]["result"]
 
-    async def fetch_pokedex_sum(self, member: discord.Member, aggregations=[]):
+    async def fetch_pokedex_sum(self, member: discord.Member | Member, aggregations=[]):
         result = await self.db.member.aggregate(
             [
-                {"$match": {"_id": member.id}},
+                {"$match": {"_id": int(member.id)}},
                 {"$project": {"pokedex": {"$objectToArray": "$pokedex"}}},
                 {"$unwind": {"path": "$pokedex"}},
                 {"$replaceRoot": {"newRoot": "$pokedex"}},
@@ -613,6 +646,79 @@ class Mongo(commands.Cog):
             return 0
 
         return result[0]["result"]
+
+    async def make_pokemon(
+        self,
+        member: discord.User | discord.Member | Member,
+        species: models.Species,
+        *,
+        shiny_boost: Optional[int] = 1,
+        min_iv_percent: Optional[float] = 0,  # Minimum IV percentage 0-100
+        max_iv_percent: Optional[float] = 100,  # Maximum IV percentage 0-100,
+        **kwargs,
+    ) -> dict[str, Any]:
+        """Function to build a pokémon.
+
+        Parameters
+        ----------
+        member : cogs.mongo.Member
+            The Member mongo Document object representing a member.
+            Used to determine shiny and idx.
+        species : data.models.Species
+            The species that the pokémon shousld be.
+        shiny_boost : int
+            How much to boost the shiny chance by (default 1).
+        min_iv_percent : float
+            Minimum total IV the pokémon should have (default 0).
+        max_iv_percent : float
+            Maximum total IV the pokémon should have (default 100).
+        **kwargs
+            Any other attribute of the pokémon can be passed in.
+            E.g. shiny=True to guarantee shiny.
+
+        Returns
+        -------
+        dict[str, Any]
+            The dict containing all the data of the new pokémon, which can
+            then be inserted into the database using `collection.insert`.
+        """
+
+        if (not isinstance(member, Member)) and hasattr(member, "id"):
+            member = await self.fetch_member_info(member)
+
+        ivs = [random_iv() for _ in range(6)]
+        if min_iv_percent > 0 or max_iv_percent < 100:
+            min_iv = iv_percent_to_total(min_iv_percent)
+            max_iv = iv_percent_to_total(max_iv_percent)
+            ivs = random_iv_composition(sum_lower_bound=min_iv, sum_upper_bound=max_iv)
+
+        level = min(max(int(random.normalvariate(20, 10)), 1), 50)
+        shiny = member.determine_shiny(species, boost=shiny_boost)
+        gender = generate_gender(species)
+
+        possible_moves = [x.move.id for x in species.moves if level >= x.method.level]
+        moves = random.sample(possible_moves, k=min(len(possible_moves), 4))
+
+        return {
+            "owner_id": int(member.id),
+            "owned_by": "user",
+            "species_id": species.id,
+            "level": level,
+            "xp": 0,
+            "nature": random_nature(),
+            "iv_hp": ivs[0],
+            "iv_atk": ivs[1],
+            "iv_defn": ivs[2],
+            "iv_satk": ivs[3],
+            "iv_sdef": ivs[4],
+            "iv_spd": ivs[5],
+            "iv_total": sum(ivs),
+            "shiny": shiny,
+            "gender": gender,
+            "moves": moves,
+            "idx": kwargs.pop("idx", await self.fetch_next_idx(member)),
+            **kwargs,
+        }
 
     async def update_member(self, member, update):
         if hasattr(member, "id"):

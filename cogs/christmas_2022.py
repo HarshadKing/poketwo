@@ -239,27 +239,10 @@ class Christmas(commands.Cog):
                 for sp in species:
                     level = min(max(int(random.normalvariate(30, 10)), 1), 100)
                     shiny = reward == "shiny" or member.determine_shiny(sp)
-                    ivs = [mongo.random_iv() for i in range(6)]
 
-                    pokemon = {
-                        "owner_id": ctx.author.id,
-                        "owned_by": "user",
-                        "species_id": sp.id,
-                        "level": level,
-                        "xp": 0,
-                        "nature": mongo.random_nature(),
-                        "iv_hp": ivs[0],
-                        "iv_atk": ivs[1],
-                        "iv_defn": ivs[2],
-                        "iv_satk": ivs[3],
-                        "iv_sdef": ivs[4],
-                        "iv_spd": ivs[5],
-                        "iv_total": sum(ivs),
-                        "shiny": shiny,
-                        "idx": await self.bot.mongo.fetch_next_idx(ctx.author),
-                    }
+                    pokemon = await self.bot.mongo.make_pokemon(member, sp, level=level, shiny=shiny)
 
-                    text.append(f"{self.bot.mongo.Pokemon.build_from_mongo(pokemon):lni} ({sum(ivs) / 186:.2%} IV)")
+                    text.append(f"{self.bot.mongo.Pokemon.build_from_mongo(pokemon):lniP}")
                     inserts.append(pokemon)
 
         await self.bot.mongo.update_member(ctx.author, update)

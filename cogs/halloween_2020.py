@@ -236,25 +236,9 @@ class Halloween(commands.Cog):
             message = f"You bought custom embed colors for your **{pokemon:ls}** for **{item['price']} candies**. Use it with `{ctx.clean_prefix}embedcolor <pokemon #> <hex color>`."
 
         elif item["action"] == "shadow_lugia":
-            ivs = [mongo.random_iv() for i in range(6)]
+            species = self.bot.data.species_by_number(self.pools["shadow_lugia"][0])
             await self.bot.mongo.db.pokemon.insert_one(
-                {
-                    "owner_id": ctx.author.id,
-                    "owned_by": "user",
-                    "species_id": 50001,
-                    "level": min(max(int(random.normalvariate(20, 10)), 1), 100),
-                    "xp": 0,
-                    "nature": mongo.random_nature(),
-                    "iv_hp": ivs[0],
-                    "iv_atk": ivs[1],
-                    "iv_defn": ivs[2],
-                    "iv_satk": ivs[3],
-                    "iv_sdef": ivs[4],
-                    "iv_spd": ivs[5],
-                    "iv_total": sum(ivs),
-                    "shiny": member.determine_shiny(self.bot.data.species_by_number(50001)),
-                    "idx": await self.bot.mongo.fetch_next_idx(ctx.author),
-                }
+                await self.bot.mongo.make_pokemon(member, species)
             )
             message += f" Use `{ctx.clean_prefix}info latest` to view it!"
 
@@ -281,7 +265,6 @@ class Halloween(commands.Cog):
                 species = self.bot.data.species_by_number(species)
 
                 level = min(max(int(random.normalvariate(70, 10)), 1), 100)
-                shiny = member.determine_shiny(species)
 
                 if reward in ("spooky", "special"):
                     total = 142 + int(abs(random.normalvariate(0, 9)))
@@ -294,22 +277,7 @@ class Halloween(commands.Cog):
                 else:
                     ivs = [mongo.random_iv() for _ in range(6)]
 
-                pokemon = {
-                    "owner_id": ctx.author.id,
-                    "owned_by": "user",
-                    "species_id": species.id,
-                    "level": level,
-                    "xp": 0,
-                    "nature": mongo.random_nature(),
-                    "iv_hp": ivs[0],
-                    "iv_atk": ivs[1],
-                    "iv_defn": ivs[2],
-                    "iv_satk": ivs[3],
-                    "iv_sdef": ivs[4],
-                    "iv_spd": ivs[5],
-                    "shiny": shiny,
-                    "idx": await self.bot.mongo.fetch_next_idx(ctx.author),
-                }
+                pokemon = await self.bot.mongo.make_pokemon(member, species, level=level)
 
                 text.append(f"{self.bot.mongo.Pokemon.build_from_mongo(pokemon):lni} ({sum(ivs) / 186:.2%} IV)")
 
