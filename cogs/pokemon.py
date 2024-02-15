@@ -1267,10 +1267,10 @@ class Pokemon(commands.Cog):
                 f"**Speed:** {species.base_stats.spd}",
             )
 
-            if species.gender_rate and species.gender_rate != -1:
-                gender_rate = f"{constants.GENDER_EMOTES['male']} {species.gender_ratios[0]}% - {constants.GENDER_EMOTES['female']} {species.gender_ratios[1]}%"
-            else:
+            if species.gender_rate == -1:
                 gender_rate = "Gender unknown"
+            else:
+                gender_rate = f"{constants.GENDER_EMOTES['male']} {species.gender_ratios[0]}% - {constants.GENDER_EMOTES['female']} {species.gender_ratios[1]}%"
 
             embed.add_field(name="Types", value="\n".join(species.types))
             embed.add_field(name="Region", value=species.region.title())
