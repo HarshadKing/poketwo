@@ -379,7 +379,7 @@ SUMMER_EVENT_COLOR = 0x2C958F
 HALLOWEEN_EVENT_COLOR = 0xE67D23
 
 GENDER_EMOTES = {
-    "male": "<:male:1206601832189657169>",
-    "female": "<:female:1206601874225102868>",
-    "unknown": "<:unknown:1206601918894313472>",
+    "male": "<:male:1207734081585152101>",
+    "female": "<:female:1207734084210532483>",
+    "unknown": "<:unknown:1207737228193701959>",
 }
