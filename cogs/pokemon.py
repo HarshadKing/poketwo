@@ -608,12 +608,16 @@ class Pokemon(commands.Cog):
 
     @cache
     def gender_filter(self, gender_field, gender):
-        if gender.capitalize() not in GENDER_TYPES.values():
-            return {"$match": {"gender": gender.capitalize()}}
+        gender = gender.casefold()
 
-        if gender.casefold() == "unknown":
+        if gender.title() not in GENDER_TYPES.values():
+            return {"$match": {"gender": gender.title()}}
+
+        defaults = self.bot.data.list_default_gender(gender)
+
+        if gender == "unknown":
             return {
-                "$match": {"species_id": {"$in": [s.id for s in self.bot.data.pokemon.values() if s.gender_rate == -1]}}
+                "$match": {"species_id": {"$in": defaults}}
             }
 
         op = "$lt" if gender == "male" else "$gte"
@@ -642,7 +646,7 @@ class Pokemon(commands.Cog):
             for k, v in by_gender_ratio.items()
         ]
 
-        return {"$match": {"$or": [{gender_field: gender.title()}, *cases]}}
+        return {"$match": {"$or": [{"species_id": {"$in": defaults}}, {gender_field: gender.title()}, *cases]}}
 
     async def create_filter(self, flags, ctx, order_by=None, map_field=lambda x: x):
         aggregations = []
