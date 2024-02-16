@@ -381,5 +381,5 @@ HALLOWEEN_EVENT_COLOR = 0xE67D23
 GENDER_EMOTES = {
     "male": "<:male:1207734081585152101>",
     "female": "<:female:1207734084210532483>",
-    "unknown": "<:unknown:1207737228193701959>",
+    "unknown": "<:unknown:1207975282921705493>",
 }
