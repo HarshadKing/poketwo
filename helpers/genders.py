@@ -25,13 +25,14 @@ def generate_gender(species: Species, *, _id: Optional[ObjectId] = None) -> Lite
         Generates and returns one of the 3 genders available based on the various conditions.
     """
 
-    if species.gender_rate == -1:
-        return "Unknown"
-
-    if _id is not None:
+    if species.default_gender is not None:
+        gender = species.default_gender
+    elif _id is not None:
         if species.id in MALE_OVERRIDES:
             return "Male"
         seconds = int(_id.generation_time.timestamp())
-        return "Male" if seconds % int(10 * sum(species.gender_ratios)) < 10 * species.gender_ratios[0] else "Female"
+        gender = "Male" if seconds % int(10 * sum(species.gender_ratios)) < 10 * species.gender_ratios[0] else "Female"
+    else:
+        gender = random.choices(["Male", "Female"], species.gender_ratios, k=1)[0]
 
-    return random.choices(["Male", "Female"], species.gender_ratios, k=1)[0]
+    return gender
