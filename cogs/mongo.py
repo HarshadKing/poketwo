@@ -102,7 +102,7 @@ class PokemonBase(MixinDocument):
         name += str(self.species)
 
         if "g" in spec:
-            name += f" {self.gender_icon}"
+            name += f"{self.gender_icon}"
 
         if "P" in spec:
             name += f" ({self.iv_percentage:.2%})"
