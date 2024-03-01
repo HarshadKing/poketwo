@@ -1,30 +1,29 @@
 from __future__ import annotations
-import asyncio
-from collections import defaultdict, namedtuple
-from functools import cached_property
-import math
-import contextlib
-from textwrap import dedent
 
-from datetime import datetime, timedelta
+import asyncio
+import contextlib
 import itertools
+import math
 import random
 import textwrap
+import uuid
+from collections import defaultdict, namedtuple
+from datetime import datetime, timedelta
+from functools import cached_property
+from textwrap import dedent
 from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, List, Optional, Tuple, Union
 from urllib.parse import urljoin
-import uuid
 
 import discord
-from discord.ext import commands, tasks
 import humanfriendly
+from discord.ext import commands, tasks
 
 from cogs import mongo
 from cogs.mongo import Member, PokemonBase
 from data.models import Species
 from helpers import checks
-from helpers.utils import FlavorString
 from helpers.context import PoketwoContext
-
+from helpers.utils import FlavorString
 
 if TYPE_CHECKING:
     from bot import ClusterBot
@@ -138,6 +137,8 @@ class Valentines(commands.Cog):
             title=f"Valentine's 2024",
             description=dedent(
                 f"""
+                **The event has now ended. You can still open any remaining boxes, but will not receive any additional boxes.**
+
                 In between the cold days there is a special day full of love, Valentine's Day!
                 During this 2 week event you can catch several Winter Pokémon in the wild and find Valentine's chocolate boxes along the way!
 
@@ -158,17 +159,17 @@ class Valentines(commands.Cog):
 
         await ctx.send(embed=embed)
 
-    @commands.Cog.listener(name="on_catch")
-    async def drop_box(self, ctx: PoketwoContext, species: Species, _id: int):
-        count = await self.bot.redis.hincrby("valentines_catch_count", ctx.author.id, 1)
-        if count >= REQUIRED_CATCHES:
-            await self.bot.mongo.update_member(ctx.author, {"$inc": {f"{VALENTINES_PREFIX}_boxes": 1}})
-            await self.bot.mongo.update_member(ctx.author, {"$inc": {f"{VALENTINES_PREFIX}_boxes_total": 1}})
-            await self.bot.redis.hdel("valentines_catch_count", ctx.author.id)
+    # @commands.Cog.listener(name="on_catch")
+    # async def drop_box(self, ctx: PoketwoContext, species: Species, _id: int):
+    #     count = await self.bot.redis.hincrby("valentines_catch_count", ctx.author.id, 1)
+    #     if count >= REQUIRED_CATCHES:
+    #         await self.bot.mongo.update_member(ctx.author, {"$inc": {f"{VALENTINES_PREFIX}_boxes": 1}})
+    #         await self.bot.mongo.update_member(ctx.author, {"$inc": {f"{VALENTINES_PREFIX}_boxes_total": 1}})
+    #         await self.bot.redis.hdel("valentines_catch_count", ctx.author.id)
 
-            await ctx.send(
-                f"You've earned a {FlavorStrings.box}!  Use {CMD_OPEN.format(ctx.clean_prefix.strip())} to open it."
-            )
+    #         await ctx.send(
+    #             f"You've earned a {FlavorStrings.box}!  Use {CMD_OPEN.format(ctx.clean_prefix.strip())} to open it."
+    #         )
 
     @checks.has_started()
     @valentines.command(aliases=("o",))
