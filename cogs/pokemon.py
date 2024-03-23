@@ -563,15 +563,19 @@ class Pokemon(commands.Cog):
         if pokemon is None:
             return await ctx.send("Couldn't find that pokémon!")
 
-        member = await self.bot.mongo.db.member.find_one_and_update({"_id": ctx.author.id}, {"$set": {f"selected_id": pokemon.id}})
-        await self.bot.redis.hdel(f"db:member", ctx.author.id)
-        text = f"You selected your {pokemon:l} No. {pokemon.idx}"
+        member = await self.bot.mongo.fetch_member_info(ctx.author)
+        previous_id = member.selected_id
 
-        previous_id = member["selected_id"]
-        if previous_id != pokemon.id:
-            previous = await self.bot.mongo.fetch_pokemon(ctx.author, previous_id)
-            if previous:
-                text += f" (from No. {previous.idx})"
+        if pokemon.id == previous_id:
+            return await ctx.send("That Pokémon is already selected.")
+
+        await self.bot.mongo.update_member(ctx.author, {"$set": {f"selected_id": pokemon.id}})
+
+        text = f"You selected your **{pokemon:plg} No. {pokemon.idx}**"
+
+        previous = await self.bot.mongo.fetch_pokemon(ctx.author, previous_id)
+        if previous:
+            text += f" (from No. {previous.idx})"
 
         await ctx.send(f"{text}.")
 
@@ -621,9 +625,7 @@ class Pokemon(commands.Cog):
         defaults = self.bot.data.list_default_gender(gender)
 
         if gender == "unknown":
-            return {
-                "$match": {"species_id": {"$in": defaults}}
-            }
+            return {"$match": {"species_id": {"$in": defaults}}}
 
         op = "$lt" if gender == "male" else "$gte"
         by_gender_ratio = defaultdict(list)
