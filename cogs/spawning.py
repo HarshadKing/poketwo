@@ -306,9 +306,11 @@ class Spawning(commands.Cog):
             )
 
         count = await self.bot.redis.hincrby(f"catches:{ctx.author.id}", 1)
+        captcha_set = False
         if count == 1:
             await self.bot.redis.expire(f"catches:{ctx.author.id}", 86400)
         elif count >= 1000:
+            captcha_set = True
             await self.bot.redis.hset("captcha", ctx.author.id, 1)
             await self.bot.redis.delete(f"catches:{ctx.author.id}")
 
@@ -406,6 +408,11 @@ class Spawning(commands.Cog):
             await ctx.send(message)
         else:
             await ctx.send(message, allowed_mentions=discord.AllowedMentions.none())
+
+        if captcha_set:
+            return await ctx.send(
+                f"Whoa there. Please tell us you're human! https://verify.poketwo.net/captcha/{ctx.author.id}"
+            )
 
     @checks.has_started()
     @commands.command(aliases=("sh",))
