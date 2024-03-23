@@ -563,12 +563,17 @@ class Pokemon(commands.Cog):
         if pokemon is None:
             return await ctx.send("Couldn't find that pokémon!")
 
-        await self.bot.mongo.update_member(
-            ctx.author,
-            {"$set": {f"selected_id": pokemon.id}},
-        )
+        member = await self.bot.mongo.db.member.find_one_and_update({"_id": ctx.author.id}, {"$set": {f"selected_id": pokemon.id}})
+        await self.bot.redis.hdel(f"db:member", ctx.author.id)
+        text = f"You selected your {pokemon:l} No. {pokemon.idx}"
 
-        await ctx.send(f"You selected your level {pokemon.level} {pokemon.species}. No. {pokemon.idx}.")
+        previous_id = member["selected_id"]
+        if previous_id != pokemon.id:
+            previous = await self.bot.mongo.fetch_pokemon(ctx.author, previous_id)
+            if previous:
+                text += f" (from No. {previous.idx})"
+
+        await ctx.send(f"{text}.")
 
     @checks.has_started()
     @commands.command(aliases=("or",))
