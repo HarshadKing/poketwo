@@ -300,10 +300,10 @@ class Spawning(commands.Cog):
         if not await self.bot.redis.hexists("wild", ctx.channel.id):
             return
 
+        captcha_message = f"Whoa there. Please tell us you're human! https://verify.poketwo.net/captcha/{ctx.author.id}"
+
         if await self.bot.redis.hexists("captcha", ctx.author.id):
-            return await ctx.send(
-                f"Whoa there. Please tell us you're human! https://verify.poketwo.net/captcha/{ctx.author.id}"
-            )
+            return await ctx.send(captcha_message)
 
         count = await self.bot.redis.hincrby(f"catches:{ctx.author.id}", 1)
         captcha_set = False
@@ -410,9 +410,7 @@ class Spawning(commands.Cog):
             await ctx.send(message, allowed_mentions=discord.AllowedMentions.none())
 
         if captcha_set:
-            return await ctx.send(
-                f"Whoa there. Please tell us you're human! https://verify.poketwo.net/captcha/{ctx.author.id}"
-            )
+            return await ctx.send(captcha_message)
 
     @checks.has_started()
     @commands.command(aliases=("sh",))
