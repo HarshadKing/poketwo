@@ -207,7 +207,7 @@ class Bot(commands.Cog):
         )
         embed.add_field(
             name="Support Server",
-            value="Join our server at [discord.gg/poketwo](https://discord.gg/poketwo) for support.",
+            value="Join our server at https://discord.gg/poketwo for support.",
             inline=False,
         )
         await channel.send(embed=embed)
