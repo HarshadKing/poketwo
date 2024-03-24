@@ -1,6 +1,7 @@
 import pickle
 import random
 import sys
+import textwrap
 import traceback
 from datetime import datetime, timedelta
 from typing import Counter
@@ -60,6 +61,39 @@ class Bot(commands.Cog):
                 req = await r.blpop("send_dm")
                 uid, content = pickle.loads(req[1])
                 self.bot.loop.create_task(self.bot.send_dm(uid, content))
+
+    @commands.Cog.listener("on_message")
+    @commands.Cog.listener("on_message_edit")
+    async def role_mention_alert_listener(self, *messages: discord.Message):
+        """Notifies user of their mistake if role mention is detected, either on message sent or edited."""
+
+        message = messages[-1]
+        if not message.guild or message.author.bot:
+            return
+
+        author = message.author
+        self_role = message.guild.self_role
+        self_name = self.bot.user.name
+        self_mention = self.bot.user.mention
+
+        if self_role in message.role_mentions:
+            embed = self.bot.Embed(
+                title="Role Mention Detected",
+                description=textwrap.dedent(
+                    f"""
+                    It seems like you may have accidentally pinged {self_name}'s *role* ({self_role.mention}) instead of {self_name} itself ({self_mention}) for the prefix, which does not work due to Discord limitations.
+
+                    This is a common mistake due to the role being the same name as the bot. If you are a server administrator, you can remedy this by renaming the role to something else.
+                    """
+                ),
+                color=constants.YELLOW,
+            )
+            embed.add_field(
+                name=f"Please re-run the command by mentioning @{self.bot.user} as the prefix. You can also copy the following, which directly mentions the bot:",
+                value=f"```\n{self_mention}\n```"
+            )
+            embed.set_author(name=str(author), icon_url=author.display_avatar.url)
+            await message.reply(embed=embed)
 
     @commands.Cog.listener()
     async def on_message_edit(self, before, after):
@@ -140,7 +174,7 @@ class Bot(commands.Cog):
         return None
 
     @commands.Cog.listener()
-    async def on_guild_join(self, guild):
+    async def on_guild_join(self, guild: discord.Guild):
         priority_channels = []
         channels = []
         for channel in guild.channels:
@@ -165,8 +199,9 @@ class Bot(commands.Cog):
         embed.add_field(
             name="Common Configuration Options",
             value=(
-                f"• `{prefix}redirect <channel>` to redirect pokémon spawns to one channel\n"
-                f"• More can be found in `{prefix}config help`\n"
+                f"- `{prefix}redirect <channel>` to redirect pokémon spawns to one channel\n"
+                f"- More can be found in `{prefix}config help`\n"
+                f"- Consider renaming my server role ({guild.self_role.mention}), as this can cause confusion with the prefix ({self.bot.user.mention}) because of the same name."
             ),
             inline=False,
         )
