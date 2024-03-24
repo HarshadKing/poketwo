@@ -239,13 +239,14 @@ class Auctions(commands.Cog):
         if counter is None:
             counter = {"next": 0}
 
+        auction_id = counter["next"]
         await self.bot.mongo.db.pokemon.update_one(
             {"_id": pokemon.id},
             {
                 "$set": {
                     "owned_by": "auction",
                     "auction_data": {
-                        "_id": counter["next"],
+                        "_id": auction_id,
                         "guild_id": ctx.guild.id,
                         "current_bid": starting_bid - bid_increment,
                         "bid_increment": bid_increment,
@@ -256,20 +257,20 @@ class Auctions(commands.Cog):
             },
         )
 
-        embed = self.make_base_embed(ctx.author, pokemon, counter["next"])
+        embed = self.make_base_embed(ctx.author, pokemon, auction_id)
         auction_info = (
             f"**Starting Bid:** {starting_bid:,} Pokécoins",
             f"**Bid Increment:** {bid_increment:,} Pokécoins",
         )
         embed.add_field(name="Auction Details", value="\n".join(auction_info))
         embed.set_footer(
-            text=f"Bid with `{ctx.clean_prefix}auction bid {counter['next']} <bid>`\n"
+            text=f"Bid with `{ctx.clean_prefix}auction bid {auction_id} <bid>`\n"
             f"Ends in {converters.strfdelta(ends - datetime.utcnow())} at"
         )
         embed.timestamp = ends
 
         await auction_channel.send(embed=embed)
-        await ctx.send(f"Auctioning your **{pokemon:Dx}**.")
+        await ctx.send(f"Auctioning your **{pokemon:Dx}** (Auction #{auction_id}).")
 
     @checks.has_started()
     @auction.command()

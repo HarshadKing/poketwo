@@ -166,19 +166,20 @@ class Market(commands.Cog):
         if counter is None:
             counter = {"next": 0}
 
+        listing_id = counter["next"]
         pokemon_dict = await self.bot.mongo.db.pokemon.find_one_and_update(
             {"_id": pokemon.id},
             {
                 "$set": {
                     "owned_by": "market",
-                    "market_data": {"_id": counter["next"], "price": price},
+                    "market_data": {"_id": listing_id, "price": price},
                 }
             },
         )
 
         self.bot.dispatch("market_add", ctx.author, pokemon_dict)
 
-        await ctx.send(f"Listed your **{pokemon:Dx}** on the market for **{price:,}** Pokécoins.")
+        await ctx.send(f"Listed your **{pokemon:Dx}** on the market for **{price:,}** Pokécoins (Listing #{listing_id}).")
 
     @checks.has_started()
     @checks.is_not_in_trade()
@@ -238,7 +239,7 @@ class Market(commands.Cog):
         # confirm
 
         result = await ctx.confirm(
-            f"Are you sure you want to buy this **{pokemon}** "
+            f"Are you sure you want to buy this **{pokemon}** (Listing #{listing['market_data']['_id']}) "
             f"for **{listing['market_data']['price']:,}** Pokécoins?"
         )
         if result is None:
@@ -292,12 +293,12 @@ class Market(commands.Cog):
         await self.bot.mongo.update_member(listing["owner_id"], {"$inc": {"balance": listing["market_data"]["price"]}})
         with contextlib.suppress(discord.HTTPException):
             await ctx.send(
-                f"You purchased a **{pokemon}** from the market for {listing['market_data']['price']} Pokécoins. Do `{ctx.clean_prefix}info latest` to view it!"
+                f"You purchased a **{pokemon}** from the market (Listing #{listing['market_data']['_id']}) for {listing['market_data']['price']:,} Pokécoins. Do `{ctx.clean_prefix}info latest` to view it!"
             )
             self.bot.loop.create_task(
                 self.bot.send_dm(
                     listing["owner_id"],
-                    f"Someone purchased your **{pokemon}** from the market. You received {listing['market_data']['price']:,} Pokécoins!",
+                    f"Someone purchased your **{pokemon}** from the market (Listing #{listing['market_data']['_id']}). You received {listing['market_data']['price']:,} Pokécoins!",
                 )
             )
 
