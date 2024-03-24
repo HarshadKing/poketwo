@@ -408,7 +408,7 @@ class Pride(commands.Cog):
             await self.bot.mongo.update_pokemon(buddy, {"$set": {"species_id": pride_species.id}})
             embed = self.bot.Embed(
                 title=f"Your {buddy.species} is transforming!",
-                description=f"{buddy.species} (No. {buddy.idx}) transformed into {pride_species}!",
+                description=f"{buddy:Dx} transformed into {pride_species}!",
             )
             embed.set_image(url=buddy.image_url)
             await ctx.send(

@@ -194,19 +194,12 @@ class Shop(commands.Cog):
         if pokemon.held_item is None:
             return await ctx.send("That pokémon isn't holding an item!")
 
-        num = await self.bot.mongo.fetch_pokemon_count(ctx.author)
-
         await self.bot.mongo.update_pokemon(
             pokemon,
             {"$set": {f"held_item": None}},
         )
 
-        name = str(pokemon.species)
-
-        if pokemon.nickname is not None:
-            name += f' "{pokemon.nickname}"'
-
-        await ctx.send(f"Dropped held item for your level {pokemon.level} {name}.")
+        await ctx.send(f"Dropped held item for your **{pokemon:lnx}**.")
 
     @checks.has_started()
     @commands.command(aliases=("mvi",))
@@ -235,23 +228,11 @@ class Shop(commands.Cog):
         if to_pokemon.held_item is not None:
             return await ctx.send("That pokémon is already holding an item!")
 
-        num = await self.bot.mongo.fetch_pokemon_count(ctx.author)
-
         await self.bot.mongo.update_pokemon(from_pokemon, {"$set": {f"held_item": None}})
         await self.bot.mongo.update_pokemon(to_pokemon, {"$set": {f"held_item": from_pokemon.held_item}})
 
-        from_name = str(from_pokemon.species)
-
-        if from_pokemon.nickname is not None:
-            from_name += f' "{from_pokemon.nickname}"'
-
-        to_name = str(to_pokemon.species)
-
-        if to_pokemon.nickname is not None:
-            to_name += f' "{to_pokemon.nickname}"'
-
         await ctx.send(
-            f"Moved held item from your level {from_pokemon.level} {from_name} to your level {to_pokemon.level} {to_name}."
+            f"Moved held item from your **{from_pokemon:lnx}** to your **{to_pokemon:lnx}**."
         )
 
     @checks.has_started()
@@ -748,7 +729,7 @@ class Shop(commands.Cog):
             )
 
         await self.bot.mongo.update_pokemon(pokemon, {"$set": {"color": color.value}})
-        await ctx.send(f"Changed embed color to **#{color.value:06x}** for your **{pokemon:ls}**.")
+        await ctx.send(f"Changed embed color to **#{color.value:06x}** for your **{pokemon}**.")
 
     @checks.has_started()
     @commands.command()

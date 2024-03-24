@@ -820,7 +820,7 @@ class Summer(commands.Cog):
     #         )
 
     #     duration = await ctx.select(
-    #         f"How long should your **No. {pokemon.idx} {pokemon:lni}** explore for? This will cost **{EXPEDITION_COST} {FlavorStrings.tokens}**.",
+    #         f"How long should your **{pokemon:lnix}** explore for? This will cost **{EXPEDITION_COST} {FlavorStrings.tokens}**.",
     #         options=[
     #             *[
     #                 discord.SelectOption(
@@ -885,7 +885,7 @@ class Summer(commands.Cog):
 
     #     # Decide the flavor text based on pokemon's first type
     #     types = pokemon.species.types or (None,)
-    #     expedition_text = EXPEDITION_FLAVOR[types[0]][0].format(pokemon=f"**No. {pokemon.idx} {pokemon:lni}**")
+    #     expedition_text = EXPEDITION_FLAVOR[types[0]][0].format(pokemon=f"**{pokemon:lnix}**")
 
     #     await ctx.send(expedition_text + f" It will be back in **{strfdelta(duration, long=True)}**")
 

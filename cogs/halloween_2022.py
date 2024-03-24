@@ -123,7 +123,7 @@ class Halloween(commands.Cog):
             return await ctx.send_help(ctx.command)
 
         if len(mons) == 1:
-            message = f"Are you sure you want to offer your {mons[0]:spl} No. {mons[0].idx}?"
+            message = f"Are you sure you want to offer your {mons[0]:Dx}?"
         else:
             message = f"Are you sure you want to offer the following pokémon?\n\n" + "\n".join(
                 f"{x:spl} ({x.idx})" for x in mons

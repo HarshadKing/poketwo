@@ -81,10 +81,15 @@ class PokemonBase(MixinDocument):
     stages = None
 
     def __format__(self, spec):
-        if self.shiny and "!s" not in spec:
-            name = "✨ "
-        else:
-            name = ""
+
+        # Default specification
+        if "D" in spec or not spec:
+            spec += "lPg"
+
+        name = ""
+
+        if "!s" not in spec and self.shiny:
+            name += "✨ "
 
         if "l" in spec:
             name += f"Level {self.level} "
@@ -95,7 +100,7 @@ class PokemonBase(MixinDocument):
         if "p" in spec:
             name += f"{self.iv_percentage:.2%} "
 
-        if self.bot.sprites.status and "i" in spec:
+        if "i" in spec and self.bot.sprites.status:
             sprite = self.bot.sprites.get(self.species.dex_number, shiny=self.shiny)
             name = sprite + " " + name
 
@@ -107,11 +112,14 @@ class PokemonBase(MixinDocument):
         if "P" in spec:
             name += f" ({self.iv_percentage:.2%})"
 
-        if self.nickname is not None and "n" in spec:
+        if "n" in spec and self.nickname is not None:
             name += f' "{self.nickname}"'
 
-        if self.favorite and "f" in spec:
+        if "f" in spec and self.favorite:
             name += " ❤️"
+
+        if "x" in spec:
+            name += f" No. {self.idx}"
 
         return name
 

@@ -84,10 +84,10 @@ class Auctions(commands.Cog):
                 with contextlib.suppress(discord.HTTPException):
                     await auction_channel.send(embed=embed)
             with contextlib.suppress(discord.HTTPException):
-                msg = f"The auction for your **{pokemon:pl}** ended with a highest bid of **{auction['auction_data']['current_bid']:,}** Pokécoins (Auction #{auction['auction_data']['_id']})."
+                msg = f"The auction for your **{pokemon}** ended with a highest bid of **{auction['auction_data']['current_bid']:,}** Pokécoins (Auction #{auction['auction_data']['_id']})."
                 await host.send(msg)
             with contextlib.suppress(discord.HTTPException):
-                msg = f"You won the auction for the **{pokemon:pl}** with a bid of **{auction['auction_data']['current_bid']:,}** Pokécoins (Auction #{auction['auction_data']['_id']})."
+                msg = f"You won the auction for the **{pokemon}** with a bid of **{auction['auction_data']['current_bid']:,}** Pokécoins (Auction #{auction['auction_data']['_id']})."
                 await bidder.send(msg)
 
             await self.bot.mongo.update_member(host, {"$inc": {"balance": auction["auction_data"]["current_bid"]}})
@@ -103,7 +103,7 @@ class Auctions(commands.Cog):
             )
         else:
             with contextlib.suppress(discord.HTTPException):
-                msg = f"The auction for your **{pokemon:pl}** ended with no bids (Auction #{auction['auction_data']['_id']})."
+                msg = f"The auction for your **{pokemon}** ended with no bids (Auction #{auction['auction_data']['_id']})."
                 await host.send(msg)
 
         # ok, bid
@@ -170,6 +170,7 @@ class Auctions(commands.Cog):
         await ctx.send(f"Changed auctions channel to **{channel}**.")
 
     @checks.has_started()
+    @checks.community_server_only()
     @checks.is_not_in_trade()
     @commands.max_concurrency(1, per=commands.BucketType.user)
     @auction.command()
@@ -182,9 +183,6 @@ class Auctions(commands.Cog):
         bid_increment: int,
     ):
         """Start an auction."""
-
-        if ctx.guild.id != 716390832034414685:
-            return await ctx.send("Sorry, you cannot start auctions outside of the main server at this time.")
 
         if pokemon is None:
             return await ctx.send("Couldn't find that pokémon!")
@@ -215,7 +213,7 @@ class Auctions(commands.Cog):
         # confirm
 
         result = await ctx.confirm(
-            f"You are auctioning your **{pokemon.iv_percentage:.2%} {pokemon.species} No. {pokemon.idx}**:\n"
+            f"You are auctioning your {pokemon:Dx}:\n"
             f"**Starting Bid:** {starting_bid:,} Pokécoins\n"
             f"**Bid Increment:** {bid_increment:,} Pokécoins\n"
             f"**Duration:** {humanfriendly.format_timespan(duration.total_seconds())}\n"
@@ -271,7 +269,7 @@ class Auctions(commands.Cog):
         embed.timestamp = ends
 
         await auction_channel.send(embed=embed)
-        await ctx.send(f"Auctioning your **{pokemon.iv_percentage:.2%} {pokemon.species} No. {pokemon.idx}**.")
+        await ctx.send(f"Auctioning your **{pokemon:Dx}**.")
 
     @checks.has_started()
     @auction.command()
@@ -291,7 +289,7 @@ class Auctions(commands.Cog):
 
         pokemon = self.bot.mongo.Pokemon.build_from_mongo(auction)
         result = await ctx.confirm(
-            f"Do you want to lower starting bid to **{new_start} Pokécoins** on the **{pokemon:pl}**?"
+            f"Do you want to lower starting bid to **{new_start} Pokécoins** on the **{pokemon}**?"
         )
         if result is None:
             return await ctx.send("Time's up. Aborted.")
@@ -347,7 +345,7 @@ class Auctions(commands.Cog):
 
         # confirm
 
-        result = await ctx.confirm(f"Do you want to bid **{bid:,} Pokécoins** on the **{pokemon:pl}**?")
+        result = await ctx.confirm(f"Do you want to bid **{bid:,} Pokécoins** on the **{pokemon}**?")
         if result is None:
             return await ctx.send("Time's up. Aborted.")
         if result is False:
@@ -409,12 +407,12 @@ class Auctions(commands.Cog):
             self.bot.loop.create_task(
                 self.bot.send_dm(
                     auction["auction_data"]["bidder_id"],
-                    f"You have been outbid on the **{pokemon:pl}** (Auction #{auction['auction_data']['_id']}). New bid: {bid} pokécoins.",
+                    f"You have been outbid on the **{pokemon}** (Auction #{auction['auction_data']['_id']}). New bid: {bid} pokécoins.",
                 )
             )
 
         await ctx.send(
-            f"You bid **{bid:,} Pokécoins** on the **{pokemon:pl}** (Auction #{auction['auction_data']['_id']})."
+            f"You bid **{bid:,} Pokécoins** on the **{pokemon}** (Auction #{auction['auction_data']['_id']})."
         )
 
         # send embed

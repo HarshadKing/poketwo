@@ -601,7 +601,7 @@ class Battling(commands.Cog):
         if pokemon is None:
             return await ctx.send("Couldn't find that pokémon!")
 
-        embed = self.bot.Embed(title=f"Level {pokemon.level} {pokemon.species} — Moves")
+        embed = self.bot.Embed(title=f"{pokemon:l} — Moves")
         embed.description = (
             f"Here are the moves your pokémon can learn right now. View all moves and how to get "
             f"them using `{ctx.clean_prefix}moveset`!"

@@ -2,6 +2,7 @@ from datetime import datetime
 
 from discord.ext import commands
 
+from helpers import constants
 from helpers.views import ConfirmUpdatedTermsOfServiceView
 
 
@@ -20,12 +21,29 @@ class Suspended(commands.CheckFailure):
         self.until = until
 
 
+class NotInGuild(commands.CheckFailure):
+    pass
+
+
 def is_admin():
     return commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True))
 
 
 def is_developer():
     return commands.check_any(commands.is_owner(), commands.has_role(1120600250474827856))
+
+
+def in_guilds(*guild_ids):
+    def predicate(ctx):
+        if ctx.guild is None or ctx.guild.id not in guild_ids:
+            raise NotInGuild("Sorry, you cannot use this command outside of the official server at this time.")
+        return True
+
+    return commands.check(predicate)
+
+
+def community_server_only():
+    return in_guilds(constants.COMMUNITY_SERVER_ID)
 
 
 def has_started():

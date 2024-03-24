@@ -1,5 +1,7 @@
 import re
 
+COMMUNITY_SERVER_ID = 716390832034414685
+
 BOXES = {"n": "normal", "g": "great", "u": "ultra", "m": "master"}
 
 NUMBER_REACTIONS = [

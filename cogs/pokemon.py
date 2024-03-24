@@ -89,9 +89,9 @@ class Pokemon(commands.Cog):
         )
 
         if nickname is None:
-            await ctx.send(f"Removed nickname for your level {pokemon.level} {pokemon.species}.")
+            await ctx.send(f"Removed nickname for your **{pokemon:Dx}**.")
         else:
-            await ctx.send(f"Changed nickname to `{nickname}` for your level {pokemon.level} {pokemon.species}.")
+            await ctx.send(f"Changed nickname to `{nickname}` for your **{pokemon:Dx}**.")
 
     # Nickname
     @flags.add_flag("newname", nargs="+")
@@ -231,14 +231,14 @@ class Pokemon(commands.Cog):
 
                 if pokemon.favorite:
                     messages.append(
-                        f"Your **{pokemon:pl}** is already favorited.\nTo unfavorite a pokemon, please use `{ctx.clean_prefix}unfavorite`."
+                        f"Your **{pokemon}** is already favorited.\nTo unfavorite a pokemon, please use `{ctx.clean_prefix}unfavorite`."
                     )
                 else:
                     await self.bot.mongo.update_pokemon(
                         pokemon,
                         {"$set": {f"favorite": True}},
                     )
-                    messages.append(f"Favorited your **{pokemon:pl}**.")
+                    messages.append(f"Favorited your **{pokemon}**.")
 
             longmsg = "\n".join(messages)
             for i in range(0, len(longmsg), 2000):
@@ -270,7 +270,7 @@ class Pokemon(commands.Cog):
                     {"$set": {f"favorite": False}},
                 )
 
-                messages.append(f"Unfavorited your **{pokemon:pl}**.")
+                messages.append(f"Unfavorited your **{pokemon}**.")
 
             longmsg = "\n".join(messages)
             for i in range(0, len(longmsg), 2000):
@@ -557,7 +557,7 @@ class Pokemon(commands.Cog):
     @checks.has_started()
     @checks.is_not_in_trade()
     @commands.command(aliases=("s",), rest_is_raw=True)
-    async def select(self, ctx, *, pokemon: converters.PokemonConverter(accept_blank=False)):
+    async def select(self, ctx, *, pokemon: converters.PokemonConverter(accept_blank=False)): # type: ignore
         """Select a specific pokémon from your collection."""
 
         if pokemon is None:
@@ -571,11 +571,11 @@ class Pokemon(commands.Cog):
 
         await self.bot.mongo.update_member(ctx.author, {"$set": {f"selected_id": pokemon.id}})
 
-        text = f"You selected your **{pokemon:plg} No. {pokemon.idx}**"
+        text = f"You selected your **{pokemon:Dx}**"
 
         previous = await self.bot.mongo.fetch_pokemon(ctx.author, previous_id)
         if previous:
-            text += f" (from No. {previous.idx})"
+            text += f" (from {previous:x})"
 
         await ctx.send(f"{text}.")
 
@@ -830,10 +830,10 @@ class Pokemon(commands.Cog):
             return
 
         if len(mons) == 1:
-            message = f"Are you sure you want to **release** your {mons[0]:spl} No. {mons[0].idx} for 2 pc?"
+            message = f"Are you sure you want to **release** your **{mons[0]:Dx}** for 2 pc?"
         else:
             message = f"Are you sure you want to release the following pokémon for {len(mons)*2:,} pc?\n\n" + "\n".join(
-                f"{x:spl} ({x.idx})" for x in mons
+                f"{x} ({x.idx})" for x in mons
             )
 
         result = await ctx.confirm(message)
@@ -1328,7 +1328,6 @@ class Pokemon(commands.Cog):
         if not all(pokemon is not None for pokemon in args):
             return await ctx.send("Couldn't find that pokémon!")
 
-        member = await self.bot.mongo.fetch_member_info(ctx.author)
         guild = await self.bot.mongo.fetch_guild(ctx.guild)
 
         embed = self.bot.Embed(description="", title=f"Congratulations {ctx.author.display_name}!")
@@ -1390,7 +1389,7 @@ class Pokemon(commands.Cog):
         # confirm
 
         result = await ctx.confirm(
-            f"Are you sure you want to switch **{pokemon:spl}** back to its non-mega form?\nThe mega evolution (1,000 pc) will not be refunded!"
+            f"Are you sure you want to switch **{pokemon}** back to its non-mega form?\nThe mega evolution (1,000 pc) will not be refunded!"
         )
         if result is None:
             return await ctx.send("Time's up. Aborted.")
