@@ -7,6 +7,7 @@ from datetime import datetime
 from functools import cache
 from operator import itemgetter
 
+import discord
 import pymongo
 from discord.errors import DiscordException
 from discord.ext import commands
@@ -212,37 +213,25 @@ class Pokemon(commands.Cog):
         ),
         rest_is_raw=True,
     )
-    async def favorite(self, ctx, args: commands.Greedy[converters.PokemonConverter]):
+    async def favorite(self, ctx, *, args: converters.GreedyPokemonConverter):
         """Mark a pokémon as a favorite."""
 
-        if len(args) == 0:
-            args.append(await converters.PokemonConverter().convert(ctx, ""))
-
         messages = []
-        ids = set()
-
+        fav_ids = []
         async with ctx.typing():
             for pokemon in args:
-                if pokemon is None:
-                    continue
-                if pokemon.id in ids:
-                    continue
-                ids.add(pokemon.id)
-
                 if pokemon.favorite:
                     messages.append(
-                        f"Your **{pokemon}** is already favorited.\nTo unfavorite a pokemon, please use `{ctx.clean_prefix}unfavorite`."
+                        f"- Your **{pokemon:Dnx}** is already favorited. To unfavorite a pokemon, please use `{ctx.clean_prefix}unfavorite`."
                     )
                 else:
-                    await self.bot.mongo.update_pokemon(
-                        pokemon,
-                        {"$set": {f"favorite": True}},
-                    )
-                    messages.append(f"Favorited your **{pokemon}**.")
+                    fav_ids.append(pokemon.id)
+                    messages.append(f"- Favorited your **{pokemon:Dnx}**.")
 
+            m = await self.bot.mongo.db.pokemon.update_many({"_id": {"$in": fav_ids}}, {"$set": {"favorite": True}})
             longmsg = "\n".join(messages)
-            for i in range(0, len(longmsg), 2000):
-                await ctx.send(longmsg[i : i + 2000])
+            for chunk in discord.utils.as_chunks(longmsg, 2000):
+                await ctx.send("".join(chunk))
 
     @checks.has_started()
     @commands.command(
@@ -252,29 +241,21 @@ class Pokemon(commands.Cog):
         ),
         rest_is_raw=True,
     )
-    async def unfavorite(self, ctx, args: commands.Greedy[converters.PokemonConverter]):
+    async def unfavorite(self, ctx, *, args: converters.GreedyPokemonConverter):
         """Unfavorite a selected pokemon."""
 
-        if len(args) == 0:
-            args.append(await converters.PokemonConverter().convert(ctx, ""))
-
         messages = []
-
+        unfav_ids = []
         async with ctx.typing():
             for pokemon in args:
-                if pokemon is None:
-                    continue
+                if pokemon.favorite:
+                    unfav_ids.append(pokemon.id)
+                messages.append(f"- Unfavorited your **{pokemon:Dnx}**.")
 
-                await self.bot.mongo.update_pokemon(
-                    pokemon,
-                    {"$set": {f"favorite": False}},
-                )
-
-                messages.append(f"Unfavorited your **{pokemon}**.")
-
+            m = await self.bot.mongo.db.pokemon.update_many({"_id": {"$in": unfav_ids}}, {"$set": {"favorite": False}})
             longmsg = "\n".join(messages)
-            for i in range(0, len(longmsg), 2000):
-                await ctx.send(longmsg[i : i + 2000])
+            for chunk in discord.utils.as_chunks(longmsg, 2000):
+                await ctx.send("".join(chunk))
 
     # Filter
     @flags.add_flag("--shiny", action="store_true")
@@ -557,7 +538,7 @@ class Pokemon(commands.Cog):
     @checks.has_started()
     @checks.is_not_in_trade()
     @commands.command(aliases=("s",), rest_is_raw=True)
-    async def select(self, ctx, *, pokemon: converters.PokemonConverter(accept_blank=False)): # type: ignore
+    async def select(self, ctx, *, pokemon: converters.PokemonConverter(accept_blank=False)):  # type: ignore
         """Select a specific pokémon from your collection."""
 
         if pokemon is None:
@@ -795,45 +776,44 @@ class Pokemon(commands.Cog):
     @checks.is_not_in_trade()
     @commands.max_concurrency(1, commands.BucketType.user)
     @commands.command(aliases=("r",))
-    async def release(self, ctx, args: commands.Greedy[converters.PokemonConverter]):
+    async def release(self, ctx, *, args: converters.GreedyPokemonConverter(include_none=True)):  # type: ignore
         """Release pokémon from your collection for 2pc each."""
 
         member = await self.bot.mongo.fetch_member_info(ctx.author)
 
-        ids = set()
-        mons = list()
-
+        release = []
+        failed_msgs = []
         for pokemon in args:
-            if pokemon is not None:
-                # can't release selected/fav
+            if pokemon is None:
+                continue
 
-                if pokemon.id in ids:
-                    continue
+            if member.selected_id == pokemon.id:
+                failed_msgs.append(f"- **{pokemon:Dnx}**: You can't release your selected pokémon!")
+                continue
 
-                if member.selected_id == pokemon.id:
-                    await ctx.send(f"{pokemon.idx}: You can't release your selected pokémon!")
-                    continue
+            if pokemon.favorite:
+                failed_msgs.append(f"- **{pokemon:Dnx}**: You can't release favorited pokémon!")
+                continue
 
-                if pokemon.favorite:
-                    await ctx.send(f"{pokemon.idx}: You can't release favorited pokémon!")
-                    continue
+            release.append(pokemon)
 
-                ids.add(pokemon.id)
-                mons.append(pokemon)
-
-        if len(args) != len(mons):
-            await ctx.send(f"Couldn't find/release {len(args)-len(mons)} pokémon in this selection!")
+        if failed_msgs:
+            await ctx.send(
+                "\n".join([*failed_msgs, f"Couldn't find/release {len(args)-len(release)} pokémon in this selection!"])
+            )
 
         # Confirmation msg
 
-        if len(mons) == 0:
+        if len(release) == 0:
             return
 
-        if len(mons) == 1:
-            message = f"Are you sure you want to **release** your **{mons[0]:Dx}** for 2 pc?"
+        pc = len(release) * 2
+
+        if len(release) == 1:
+            message = f"Are you sure you want to **release** your **{release[0]:Dx}** for {pc:,} pc?"
         else:
-            message = f"Are you sure you want to release the following pokémon for {len(mons)*2:,} pc?\n\n" + "\n".join(
-                f"{x} ({x.idx})" for x in mons
+            message = f"Are you sure you want to release the following pokémon for {pc:,} pc?\n\n" + "\n".join(
+                f"- **{x:Dnx}**" for x in release
             )
 
         result = await ctx.confirm(message)
@@ -848,18 +828,17 @@ class Pokemon(commands.Cog):
         # confirmed, release
 
         result = await self.bot.mongo.db.pokemon.update_many(
-            {"owner_id": ctx.author.id, "_id": {"$in": list(ids)}},
+            {"owner_id": ctx.author.id, "_id": {"$in": [p.id for p in release]}},
             {"$set": {"owned_by": "released"}},
         )
+        pc = result.modified_count * 2
         await self.bot.mongo.update_member(
             ctx.author,
             {
-                "$inc": {"balance": 2 * result.modified_count},
+                "$inc": {"balance": pc},
             },
         )
-        await ctx.send(
-            f"You released {result.modified_count} pokémon. You received {2*result.modified_count:,} Pokécoins!"
-        )
+        await ctx.send(f"You released {result.modified_count} pokémon. You received {pc:,} Pokécoins!")
         self.bot.dispatch("release", ctx.author, result.modified_count)
 
     # Filter
@@ -1320,15 +1299,10 @@ class Pokemon(commands.Cog):
     @checks.is_not_in_trade()
     @commands.guild_only()
     @commands.command(rest_is_raw=True)
-    async def evolve(self, ctx, args: commands.Greedy[converters.PokemonConverter]):
+    async def evolve(self, ctx, *, args: converters.GreedyPokemonConverter):
         """Evolve a pokémon if it has reached the target level."""
 
-        args = list({p.id: p for p in args}.values())  # Remove duplicates based on id
-
         if len(args) == 0:
-            args.append(await converters.PokemonConverter().convert(ctx, ""))
-
-        if not all(pokemon is not None for pokemon in args):
             return await ctx.send("Couldn't find that pokémon!")
 
         guild = await self.bot.mongo.fetch_guild(ctx.guild)
@@ -1340,36 +1314,41 @@ class Pokemon(commands.Cog):
         if len(args) > 30:
             return await ctx.send("You can't evolve more than 30 pokémon at once!")
 
+        failed_msgs = []
         for pokemon in args:
-            name = format(pokemon, "n")
+            name = format(pokemon, "Pgnx")
 
             if (evo := pokemon.get_next_evolution(guild.is_day)) is None:
-                return await ctx.send(f"Your {name} can't be evolved!")
+                failed_msgs.append(f"- Your **{name}** can't be evolved!")
+                continue
 
             if len(args) < 20:
                 embed.add_field(
-                    name=f"Your {name} is evolving!",
-                    value=f"Your {name} has turned into a {evo}!",
+                    name=f"Your **{name}** is evolving!",
+                    value=f"Your **{name}** has turned into a **{evo}**!",
                     inline=True,
                 )
-
             else:
-                embed.description += f"\n**Your {name} is evolving!**\nYour {name} has turned into a {evo}!"
+                embed.description += f"\n**Your {name} is evolving!**\nYour **{name}** has turned into a {evo}!"
 
             if len(args) == 1:
                 embed.set_thumbnail(url=evo.get_image_url(pokemon.shiny, pokemon.gender))
 
             evolved.append((pokemon, evo))
 
-        for pokemon, evo in evolved:
-            await self.bot.mongo.update_pokemon(
-                pokemon,
-                {"$set": {f"species_id": evo.id}},
-            )
+        if failed_msgs:
+            await ctx.send("\n".join(failed_msgs))
 
-            self.bot.dispatch("evolve", ctx.author, pokemon, evo)
+        if evolved:
+            for pokemon, evo in evolved:
+                await self.bot.mongo.update_pokemon(
+                    pokemon,
+                    {"$set": {f"species_id": evo.id}},
+                )
 
-        await ctx.send(embed=embed)
+                self.bot.dispatch("evolve", ctx.author, pokemon, evo)
+
+            await ctx.send(embed=embed)
 
     @checks.has_started()
     @checks.is_not_in_trade()

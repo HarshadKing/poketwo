@@ -1,4 +1,5 @@
 from datetime import timedelta
+import re
 from typing import Dict, Optional
 
 import discord
@@ -63,6 +64,32 @@ class PokemonConverter(commands.Converter):
             )
 
         return await ctx.bot.mongo.fetch_pokemon(ctx.author, number)
+
+
+class GreedyPokemonConverter(commands.Converter):
+    def __init__(self, *, include_none: Optional[bool] = False):
+        self.include_none = include_none
+
+    async def convert(self, ctx: PoketwoContext, argument: str):
+        args = []
+        for arg in re.split("\s+", argument.strip()):
+            arg = arg.strip()
+            if arg not in args:
+                args.append(arg)
+
+        converter = PokemonConverter()
+        pokemon = []
+        for arg in args:
+            p = await converter.convert(ctx, arg)
+            if p is None and not self.include_none:
+                continue
+
+            if p is not None and p in pokemon:
+                continue
+
+            pokemon.append(p)
+
+        return pokemon
 
 
 class ItemAndQuantityConverter(commands.Converter):  # TODO: Try validation
