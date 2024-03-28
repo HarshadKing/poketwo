@@ -4,6 +4,7 @@ from datetime import datetime
 
 from discord.ext import commands
 
+from helpers.context import PoketwoContext
 from helpers.converters import FetchUserConverter, TimeDelta, strfdelta
 
 from . import mongo
@@ -150,27 +151,22 @@ class Administration(commands.Cog):
         if species is None:
             return await ctx.send(f"Could not find a pokemon matching `{arg}`.")
 
-        await self.bot.mongo.db.pokemon.insert_one(
-            await self.bot.mongo.make_pokemon(user, species, shiny=shiny)
-        )
+        await self.bot.mongo.db.pokemon.insert_one(await self.bot.mongo.make_pokemon(user, species, shiny=shiny))
 
         await ctx.send(f"Gave **{user}** a {species}.")
 
     @commands.is_owner()
     @admin.command()
-    async def setup(self, ctx, user: FetchUserConverter, num: int = 100):
-        """Test setup pokémon."""
+    async def setup(self, ctx: PoketwoContext, user: FetchUserConverter, num: int = 100):
+        """Test setup pokémon for development purposes."""
 
-        # This is for development purposes.
-
+        member = await self.bot.mongo.fetch_member_info(user)
         pokemon = []
         idx = await self.bot.mongo.fetch_next_idx(user, reserve=num)
 
-        for i in range(num):
-            species = self.bot.data.species_by_number(random.randint(1, 905))
-            pokemon.append(
-                await self.bot.mongo.make_pokemon(user, species, idx=idx+i)
-            )
+        species = random.choices(tuple(self.bot.data.all_pokemon()), k=num)
+        for i, sp in enumerate(species):
+            pokemon.append(await self.bot.mongo.make_pokemon(member, sp, idx=idx + i))
 
         await self.bot.mongo.db.pokemon.insert_many(pokemon)
         await ctx.send(f"Gave **{user}** {num} pokémon.")
