@@ -140,7 +140,7 @@ class Christmas(commands.Cog):
         """Give a coin."""
 
         await self.bot.mongo.update_member(user, {"$inc": {"christmas_coins_2022": num}})
-        await ctx.send(f"Gave **{user}** {num} Christmas Coins.")
+        await ctx.send(f"Gave **{user}** {num:,} Christmas Coins.")
 
     @checks.has_started()
     @checks.is_not_in_trade()
@@ -218,12 +218,12 @@ class Christmas(commands.Cog):
                 if type == "random":
                     shards //= 2
                 update["$inc"]["premium_balance"] += shards
-                text.append(f"{shards} Shards")
+                text.append(f"{shards:,} Shards")
 
             if reward == "pokecoins":
                 shards = 3000 + round(abs(random.normalvariate(0, 2000)))
                 update["$inc"]["balance"] += shards
-                text.append(f"{shards} Pokécoins")
+                text.append(f"{shards:,} Pokécoins")
 
             elif reward == "redeem":
                 update["$inc"]["redeems"] += 1

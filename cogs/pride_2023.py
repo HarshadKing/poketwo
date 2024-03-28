@@ -60,7 +60,7 @@ def make_catch_type_quest(type):
         "count": (count := random.randint(5, 15)),
         "condition": {"type": type},
         "flag_count": random.randint(15, 25),
-        "description": f"Catch {count} {type}-type pokémon",
+        "description": f"Catch {count:,} {type}-type pokémon",
     }
 
 
@@ -69,13 +69,13 @@ QUESTS = [
         "event": "market_buy",
         "count": (count := random.randint(5, 10)),
         "flag_count": random.randint(2, 4),
-        "description": f"Purchase {count} pokémon from the market",
+        "description": f"Purchase {count:,} pokémon from the market",
     },
     lambda: {
         "event": "market_add",
         "count": (count := random.randint(10, 20)),
         "flag_count": random.randint(3, 5),
-        "description": f"List {count} pokémon on the market",
+        "description": f"List {count:,} pokémon on the market",
     },
     lambda: {
         "event": "battle_start",
@@ -88,13 +88,13 @@ QUESTS = [
         "event": "release",
         "count": (count := random.randint(10, 20)),
         "flag_count": random.randint(3, 8),
-        "description": f"Release {count} pokémon",
+        "description": f"Release {count:,} pokémon",
     },
     lambda: {
         "event": "battle_win",
         "count": (count := random.randint(1, 3)),
         "flag_count": random.randint(3, 5),
-        "description": f"Win a battle {count} times",
+        "description": f"Win a battle {count:,} times",
     },
     lambda: {
         "event": "battle_start",
@@ -107,13 +107,13 @@ QUESTS = [
         "event": "trade",
         "count": (count := random.randint(3, 6)),
         "flag_count": random.randint(2, 3),
-        "description": f"Trade with {count} people",
+        "description": f"Trade with {count:,} people",
     },
     lambda: {
         "event": "evolve",
         "count": (count := random.randint(10, 15)),
         "flag_count": random.randint(3, 5),
-        "description": f"Evolve {count} pokémon",
+        "description": f"Evolve {count:,} pokémon",
     },
 ]
 
@@ -412,7 +412,7 @@ class Pride(commands.Cog):
             )
             embed.set_image(url=buddy.image_url)
             await ctx.send(
-                f"You offered {qty} {FLAG_NAMES[flag]} to {buddy.species}. You received {pc} Pokécoins!", embed=embed
+                f"You offered {qty} {FLAG_NAMES[flag]} to {buddy.species}. You received {pc:,} Pokécoins!", embed=embed
             )
 
             # This is to avoid fetching member again
@@ -430,7 +430,7 @@ class Pride(commands.Cog):
                 {"$inc": {f"pride_2023_{flag}": -qty, "pride_2023_buddy_progress": limit, "balance": pc}},
             )
             await ctx.send(
-                f"You offered {qty} {FLAG_NAMES[flag]} to {buddy.species}! {buddy.species}'s Pride Level is now at {member.pride_2023_buddy_progress + limit}%. You received {pc} Pokécoins!"
+                f"You offered {qty} {FLAG_NAMES[flag]} to {buddy.species}! {buddy.species}'s Pride Level is now at {member.pride_2023_buddy_progress + limit}%. You received {pc:,} Pokécoins!"
             )
 
     def verify_condition(self, condition, species, to=None):

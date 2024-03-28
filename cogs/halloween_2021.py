@@ -89,7 +89,7 @@ class Halloween(commands.Cog):
         """Give a ticket."""
 
         await self.bot.mongo.update_member(user, {"$inc": {"halloween_tickets_2021": num}})
-        await ctx.send(f"Gave **{user}** {num} Trick-or-Treat tickets.")
+        await ctx.send(f"Gave **{user}** {num:,} Trick-or-Treat tickets.")
 
     @checks.has_started()
     @commands.max_concurrency(1, commands.BucketType.user)
@@ -113,7 +113,7 @@ class Halloween(commands.Cog):
         if reward == "shards":
             shards = round(random.normalvariate(25, 10))
             await self.bot.mongo.update_member(ctx.author, {"$inc": {"premium_balance": shards}})
-            text = f"{shards} Shards"
+            text = f"{shards:,} Shards"
 
         elif reward == "redeem":
             await self.bot.mongo.update_member(ctx.author, {"$inc": {"redeems": 1}})

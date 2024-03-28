@@ -248,11 +248,11 @@ class Halloween(commands.Cog):
         elif item["action"] == "crate":
             reward = random.choices(*CRATE_REWARDS, k=1)[0]
             shards = round(random.normalvariate(10, 3))
-            text = [f"{shards} Shards"]
+            text = [f"{shards:,} Shards"]
 
             if reward == "shards":
                 shards = round(random.normalvariate(50, 10))
-                text = [f"{shards} Shards"]
+                text = [f"{shards:,} Shards"]
 
             elif reward == "redeem":
                 await self.bot.mongo.update_member(ctx.author, {"$inc": {"redeems": 1}})

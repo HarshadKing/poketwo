@@ -6,7 +6,7 @@ from pymongo import ReturnDocument
 
 from helpers import checks
 
-name = lambda r: lambda c: f"Catch {c} pokémon originally found in the {r.title()} region."
+name = lambda r: lambda c: f"Catch {c:,} pokémon originally found in the {r.title()} region."
 
 CATCHING_TRACKS = {
     f"catch_region_{region}": {

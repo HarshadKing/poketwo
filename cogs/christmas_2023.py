@@ -255,9 +255,9 @@ def get_quest_description(quest: dict):
         case "catch":
             if condition:
                 if type := condition.get("type"):
-                    description = f"Catch {count} {type}-type pokémon"
+                    description = f"Catch {count:,} {type}-type pokémon"
                 elif region := condition.get("region"):
-                    description = f"Catch {count} pokémon from the {region.title()} region"
+                    description = f"Catch {count:,} pokémon from the {region.title()} region"
                 elif rarity := condition.get("rarity"):
                     title = "Rare" if isinstance(rarity, (tuple, list)) else rarity.capitalize()
 
@@ -266,34 +266,34 @@ def get_quest_description(quest: dict):
                     if title == "Event":
                         title = "(~~Event~~) Rare"  # Convert to rares
 
-                    description = f"Catch {count} {title} pokémon"
+                    description = f"Catch {count:,} {title} pokémon"
                 elif form := condition.get("form"):
                     title = "Regional" if isinstance(form, (tuple, list)) else form.capitalize()
-                    description = f"Catch {count} {title} Form pokémon"
+                    description = f"Catch {count:,} {title} Form pokémon"
             else:
-                description = f"Catch {count} pokémon"
+                description = f"Catch {count:,} pokémon"
 
         case "open_box":
-            description = f"Open {count} Voting box{'' if count == 1 else 'es'}"
+            description = f"Open {count:,} Voting box{'' if count == 1 else 'es'}"
 
         case "market_buy":
-            description = f"Spend {count} {FlavorStrings.pokecoins:!e} on the market"
+            description = f"Spend {count:,} {FlavorStrings.pokecoins:!e} on the market"
 
         case "market_sell":
-            description = f"Earn {count} {FlavorStrings.pokecoins:!e} from the market"
+            description = f"Earn {count:,} {FlavorStrings.pokecoins:!e} from the market"
 
         case "trade":
-            description = f"Trade {count} times"
+            description = f"Trade {count:,} times"
 
         case "battle_start":
             if condition:
                 if type := condition.get("type"):
-                    description = f"Battle {count} times with {type}-type pokémon"
+                    description = f"Battle {count:,} times with {type}-type pokémon"
             else:
-                description = f"Battle {count} times"
+                description = f"Battle {count:,} times"
 
         case "release":
-            description = f"Release {count} pokémon"
+            description = f"Release {count:,} pokémon"
 
         case _:
             description = f"{event} {count}"
@@ -639,20 +639,20 @@ class Christmas(commands.Cog):
         amount = reward.get("amount", 1)
         if reward["reward"] == "iv_pokemon":
             flavor = FlavorStrings.iv_pokemon
-            reward_text = f"{flavor.emoji} {amount} {IV_REWARD}+ {flavor:!e}"
+            reward_text = f"{flavor.emoji} {amount:,} {IV_REWARD}+ {flavor:!e}"
 
         elif reward["reward"] == "rarity_pokemon":
             flavor = getattr(FlavorStrings, reward["rarity"])
-            reward_text = f"{flavor.emoji} {amount} {flavor:!e}"
+            reward_text = f"{flavor.emoji} {amount:,} {flavor:!e}"
 
         elif reward["reward"] == "event_pokemon":
             species = self.bot.data.species_by_number(reward["id"])
-            reward_text = f"{self.bot.sprites.get(species.dex_number)} {amount} {species}"
+            reward_text = f"{self.bot.sprites.get(species.dex_number)} {amount:,} {species}"
         elif reward["reward"] == "badge":
             reward_text = f"{FlavorStrings.badge}"
         else:
             flavor = getattr(FlavorStrings, reward["reward"])
-            reward_text = f"{flavor.emoji} {amount} {flavor:!e}"
+            reward_text = f"{flavor.emoji} {amount:,} {flavor:!e}"
 
         return reward_text
 
@@ -809,15 +809,15 @@ class Christmas(commands.Cog):
             match reward:
                 case "pokecoins":
                     flavor = getattr(FlavorStrings, reward)
-                    text.append(f"- {flavor.emoji} {count} {flavor:!e}")
+                    text.append(f"- {flavor.emoji} {count:,} {flavor:!e}")
                     update["$inc"]["balance"] += count
                 case "shards":
                     flavor = getattr(FlavorStrings, reward)
-                    text.append(f"- {flavor.emoji} {count} {flavor:!e}")
+                    text.append(f"- {flavor.emoji} {count:,} {flavor:!e}")
                     update["$inc"]["premium_balance"] += count
                 case "redeems":
                     flavor = FlavorStrings.redeem
-                    text.append(f"- {count} {flavor:!e{'' if count == 1 else 's'}}")
+                    text.append(f"- {count:,} {flavor:!e{'' if count == 1 else 's'}}")
                     update["$inc"]["redeems"] += count
                 case "event_pokemon" | "rarity_pokemon" | "iv_pokemon":
                     pokemon = await self.make_reward_pokemon(reward, ctx.author, member)

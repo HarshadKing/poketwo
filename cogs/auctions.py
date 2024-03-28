@@ -290,7 +290,7 @@ class Auctions(commands.Cog):
 
         pokemon = self.bot.mongo.Pokemon.build_from_mongo(auction)
         result = await ctx.confirm(
-            f"Do you want to lower starting bid to **{new_start} Pokécoins** on the **{pokemon}**?"
+            f"Do you want to lower starting bid to **{new_start:,} Pokécoins** on the **{pokemon}**?"
         )
         if result is None:
             return await ctx.send("Time's up. Aborted.")
@@ -408,7 +408,7 @@ class Auctions(commands.Cog):
             self.bot.loop.create_task(
                 self.bot.send_dm(
                     auction["auction_data"]["bidder_id"],
-                    f"You have been outbid on the **{pokemon}** (Auction #{auction['auction_data']['_id']}). New bid: {bid} pokécoins.",
+                    f"You have been outbid on the **{pokemon}** (Auction #{auction['auction_data']['_id']}). New bid: {bid:,} Pokécoins.",
                 )
             )
 

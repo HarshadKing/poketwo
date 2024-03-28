@@ -81,7 +81,7 @@ class Administration(commands.Cog):
         """Give a redeem."""
 
         await self.bot.mongo.update_member(user, {"$inc": {"redeems": num}})
-        await ctx.send(f"Gave **{user}** {num} redeems.")
+        await ctx.send(f"Gave **{user}** {num:,} redeems.")
 
     @commands.is_owner()
     @admin.command(aliases=("givecoins", "ac", "gc"))
@@ -89,7 +89,7 @@ class Administration(commands.Cog):
         """Add to a user's balance."""
 
         await self.bot.mongo.update_member(user, {"$inc": {"balance": amt}})
-        await ctx.send(f"Gave **{user}** {amt} Pokécoins.")
+        await ctx.send(f"Gave **{user}** {amt:,} Pokécoins.")
 
     @commands.is_owner()
     @admin.command(aliases=("giveshard", "as", "gs"))
@@ -97,7 +97,7 @@ class Administration(commands.Cog):
         """Add to a user's shard balance."""
 
         await self.bot.mongo.update_member(user, {"$inc": {"premium_balance": amt}})
-        await ctx.send(f"Gave **{user}** {amt} shards.")
+        await ctx.send(f"Gave **{user}** {amt:,} shards.")
 
     @commands.is_owner()
     @admin.command(aliases=("givevote", "av", "gv"))
@@ -112,7 +112,7 @@ class Administration(commands.Cog):
             },
         )
 
-        await ctx.send(f"Increased vote streak by {amt} for **{user}**.")
+        await ctx.send(f"Increased vote streak by {amt:,} for **{user}**.")
 
     @commands.is_owner()
     @admin.command(aliases=("givebox", "ab", "gb"))
@@ -133,7 +133,7 @@ class Administration(commands.Cog):
         if amt == 1:
             await ctx.send(f"Gave **{user}** 1 {box_type} box.")
         else:
-            await ctx.send(f"Gave **{user}** {amt} {box_type} boxes.")
+            await ctx.send(f"Gave **{user}** {amt:,} {box_type} boxes.")
 
     @commands.is_owner()
     @admin.command(aliases=("g",))
@@ -169,7 +169,7 @@ class Administration(commands.Cog):
             pokemon.append(await self.bot.mongo.make_pokemon(member, sp, idx=idx + i))
 
         await self.bot.mongo.db.pokemon.insert_many(pokemon)
-        await ctx.send(f"Gave **{user}** {num} pokémon.")
+        await ctx.send(f"Gave **{user}** {num:,} pokémon.")
 
 
 async def setup(bot: commands.Bot):

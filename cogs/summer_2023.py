@@ -308,10 +308,10 @@ class Summer(commands.Cog):
                 case "nothing":
                     text.append("- Trash :(")
                 case "summer_tokens":
-                    text.append(f"- {count} {FlavorStrings.tokens:!e}")
+                    text.append(f"- {count:,} {FlavorStrings.tokens:!e}")
                     update["$inc"]["summer_2023_tokens"] += count
                 case "pc":
-                    text.append(f"- {count} {FlavorStrings.pokecoins:!e}")
+                    text.append(f"- {count:,} {FlavorStrings.pokecoins:!e}")
                     update["$inc"]["balance"] += count
                 case "event-smeargle" | "non-event" | "non-event-shiny":
                     shiny_boost = 1
@@ -435,7 +435,7 @@ class Summer(commands.Cog):
         # Confirmation
 
         confirm = await ctx.confirm(
-            f"Are you sure you want to buy **{amount} {item_name}** for **{price} {FlavorStrings.tokens}**?"
+            f"Are you sure you want to buy **{amount:,} {item_name}** for **{price} {FlavorStrings.tokens}**?"
         )
         if confirm is None:
             return await ctx.send("Time's up. Aborted.")

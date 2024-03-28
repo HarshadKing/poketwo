@@ -555,7 +555,7 @@ class Bot(commands.Cog):
         spammers = Counter(m.author.display_name for m in deleted)
         count = len(deleted)
 
-        messages = [f'{count} message{" was" if count == 1 else "s were"} removed.']
+        messages = [f'{count:,} message{" was" if count == 1 else "s were"} removed.']
         if len(deleted) > 0:
             messages.append("")
             spammers = sorted(spammers.items(), key=lambda t: t[1], reverse=True)

@@ -180,9 +180,9 @@ class Pokemon(commands.Cog):
 
         # confirm
         if nicknameall is None:
-            message = f"Are you sure you want to **remove** nickname for {num} pokémon?"
+            message = f"Are you sure you want to **remove** nickname for {num:,} pokémon?"
         else:
-            message = f"Are you sure you want to rename {num} pokémon to `{nicknameall}`?"
+            message = f"Are you sure you want to rename {num:,} pokémon to `{nicknameall}`?"
 
         result = await ctx.confirm(message + await self.valuable_pokemon_details(ctx, aggregations))
         if result is None:
@@ -191,7 +191,7 @@ class Pokemon(commands.Cog):
             return await ctx.send("Aborted.")
 
         # confirmed, nickname all
-        await ctx.send(f"Renaming {num} pokémon, this might take a while...")
+        await ctx.send(f"Renaming {num:,} pokémon, this might take a while...")
 
         pokemon = self.bot.mongo.fetch_pokemon_list(ctx.author, aggregations)
 
@@ -201,9 +201,9 @@ class Pokemon(commands.Cog):
         )
 
         if nicknameall is None:
-            await ctx.reply(f"Removed nickname for {num} pokémon.", mention_author=mention_author)
+            await ctx.reply(f"Removed nickname for {num:,} pokémon.", mention_author=mention_author)
         else:
-            await ctx.reply(f"Changed nickname to `{nicknameall}` for {num} pokémon.", mention_author=mention_author)
+            await ctx.reply(f"Changed nickname to `{nicknameall}` for {num:,} pokémon.", mention_author=mention_author)
 
     @checks.has_started()
     @checks.is_not_in_trade()
@@ -344,7 +344,7 @@ class Pokemon(commands.Cog):
         # confirm
 
         result = await ctx.confirm(
-            f"Are you sure you want to **favorite** your {unfavnum} pokémon?"
+            f"Are you sure you want to **favorite** your {unfavnum:,} pokémon?"
             + await self.valuable_pokemon_details(ctx, aggregations)
         )
         if result is None:
@@ -358,7 +358,7 @@ class Pokemon(commands.Cog):
         )
 
         await ctx.reply(
-            f"Favorited your {unfavnum} unfavorited pokemon.\nAll {num} selected pokemon are now favorited.",
+            f"Favorited your {unfavnum:,} unfavorited pokemon.\nAll {num:,} selected pokemon are now favorited.",
             mention_author=mention_author,
         )
 
@@ -445,7 +445,7 @@ class Pokemon(commands.Cog):
         # confirm
 
         result = await ctx.confirm(
-            f"Are you sure you want to **unfavorite** your {favnum} pokémon?"
+            f"Are you sure you want to **unfavorite** your {favnum:,} pokémon?"
             + await self.valuable_pokemon_details(ctx, aggregations)
         )
         if result is None:
@@ -459,7 +459,7 @@ class Pokemon(commands.Cog):
         )
 
         await ctx.reply(
-            f"Unfavorited your {favnum} favorited pokemon.\nAll {num} selected pokemon are now unfavorited.",
+            f"Unfavorited your {favnum:,} favorited pokemon.\nAll {num:,} selected pokemon are now unfavorited.",
             mention_author=mention_author,
         )
 
@@ -780,7 +780,6 @@ class Pokemon(commands.Cog):
 
         return aggregations
 
-    @timer  # TODO: Remove
     async def valuable_pokemon_details(
         self,
         ctx: PoketwoContext,
@@ -891,7 +890,7 @@ class Pokemon(commands.Cog):
                 "$inc": {"balance": pc},
             },
         )
-        await ctx.send(f"You released {result.modified_count} pokémon. You received {pc:,} Pokécoins!")
+        await ctx.send(f"You released {result.modified_count:,} pokémon. You received {pc:,} Pokécoins!")
         self.bot.dispatch("release", ctx.author, result.modified_count)
 
     # Filter
@@ -976,7 +975,7 @@ class Pokemon(commands.Cog):
         # confirm
 
         result = await ctx.confirm(
-            f"Are you sure you want to release **{num} pokémon** for {num*2:,} pc? Favorited and selected pokémon won't be removed."
+            f"Are you sure you want to release **{num:,} pokémon** for {num*2:,} pc? Favorited and selected pokémon won't be removed."
             + await self.valuable_pokemon_details(ctx, aggregations)
         )
         if result is None:
@@ -991,7 +990,7 @@ class Pokemon(commands.Cog):
 
         num = await self.bot.mongo.fetch_pokemon_count(ctx.author, aggregations=aggregations)
 
-        await ctx.send(f"Releasing {num} pokémon, this might take a while...")
+        await ctx.send(f"Releasing {num:,} pokémon, this might take a while...")
 
         pokemon = self.bot.mongo.fetch_pokemon_list(ctx.author, aggregations)
 
@@ -1008,7 +1007,7 @@ class Pokemon(commands.Cog):
         )
 
         await ctx.reply(
-            f"You have released {result.modified_count} pokémon. You received {2*result.modified_count:,} Pokécoins!",
+            f"You have released {result.modified_count:,} pokémon. You received {2*result.modified_count:,} Pokécoins!",
             mention_author=mention_author,
         )
         self.bot.dispatch("release", ctx.author, result.modified_count)
@@ -1208,7 +1207,7 @@ class Pokemon(commands.Cog):
                 # Send embed
 
                 embed = self.bot.Embed(
-                    title=f"Your pokédex", description=f"You've caught {num} out of {total_count} pokémon!"
+                    title=f"Your pokédex", description=f"You've caught {num:,} out of {total_count:,} pokémon!"
                 )
 
                 embed.set_footer(text=f"Showing {pgstart + 1}–{pgend} out of {len(pokedex)}.")

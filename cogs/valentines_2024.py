@@ -208,15 +208,15 @@ class Valentines(commands.Cog):
             match reward:
                 case "pokecoins":
                     flavor = getattr(FlavorStrings, reward)
-                    text.append(f"- {flavor.emoji} {count} {flavor:!e}")
+                    text.append(f"- {flavor.emoji} {count:,} {flavor:!e}")
                     update["$inc"]["balance"] += count
                 case "shards":
                     flavor = getattr(FlavorStrings, reward)
-                    text.append(f"- {flavor.emoji} {count} {flavor:!e}")
+                    text.append(f"- {flavor.emoji} {count:,} {flavor:!e}")
                     update["$inc"]["premium_balance"] += count
                 case "redeems":
                     flavor = FlavorStrings.redeem
-                    text.append(f"- {count} {flavor:!e{'' if count == 1 else 's'}}")
+                    text.append(f"- {count:,} {flavor:!e{'' if count == 1 else 's'}}")
                     update["$inc"]["redeems"] += count
                 case "event_pokemon" | "non-event" | "non-event-shiny":
                     pokemon = await self.make_reward_pokemon(reward, ctx.author)

@@ -89,10 +89,10 @@ class Christmas(commands.Cog):
 
         if box_type.lower() == "nice":
             await self.bot.mongo.update_member(user, {"$inc": {"christmas_boxes_nice": num}})
-            await ctx.send(f"Gave **{user}** {num} Nice Boxes.")
+            await ctx.send(f"Gave **{user}** {num:,} Nice Boxes.")
         elif box_type.lower() == "naughty":
             await self.bot.mongo.update_member(user, {"$inc": {"christmas_boxes_naughty": num}})
-            await ctx.send(f"Gave **{user}** {num} Naughty Boxes.")
+            await ctx.send(f"Gave **{user}** {num:,} Naughty Boxes.")
         else:
             await ctx.send("Need a valid box type!")
 
@@ -128,12 +128,12 @@ class Christmas(commands.Cog):
         if reward == "shards":
             shards = max(round(random.normalvariate(25, 10)), 2)
             await self.bot.mongo.update_member(ctx.author, {"$inc": {"premium_balance": shards}})
-            text = f"{shards} Shards"
+            text = f"{shards:,} Shards"
 
         elif reward == "pokecoins":
             pokecoins = max(round(random.normalvariate(1000, 500)), 800)
             await self.bot.mongo.update_member(ctx.author, {"$inc": {"balance": pokecoins}})
-            text = f"{pokecoins} Pokécoins"
+            text = f"{pokecoins:,} Pokécoins"
 
         elif reward == "redeem":
             await self.bot.mongo.update_member(ctx.author, {"$inc": {"redeems": 1}})

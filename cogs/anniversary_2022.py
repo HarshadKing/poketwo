@@ -36,7 +36,7 @@ def make_catch_type_quest(type):
         "event": "catch",
         "count": (count := random.randint(10, 20)),
         "condition": {"type": type},
-        "description": f"Catch {count} {type}-type pokémon",
+        "description": f"Catch {count:,} {type}-type pokémon",
     }
 
 
@@ -45,7 +45,7 @@ def make_catch_region_quest(region):
         "event": "catch",
         "count": (count := random.randint(20, 40)),
         "condition": {"region": region},
-        "description": f"Catch {count} pokémon from the {region.title()} region",
+        "description": f"Catch {count:,} pokémon from the {region.title()} region",
     }
 
 
@@ -58,27 +58,27 @@ GUARANTEED_QUESTS = [
     lambda: {
         "event": "trade",
         "count": (count := random.randint(3, 6)),
-        "description": f"Trade with {count} people",
+        "description": f"Trade with {count:,} people",
     },
     lambda: {
         "event": "evolve",
         "count": (count := random.randint(10, 15)),
-        "description": f"Evolve {count} pokémon",
+        "description": f"Evolve {count:,} pokémon",
     },
     lambda: {
         "event": "release",
         "count": (count := random.randint(10, 20)),
-        "description": f"Release {count} pokémon",
+        "description": f"Release {count:,} pokémon",
     },
     lambda: {
         "event": "battle_start",
         "count": (count := random.randint(1, 3)),
-        "description": f"Battle another player {count} times",
+        "description": f"Battle another player {count:,} times",
     },
     lambda: {
         "event": "market_buy",
         "count": (count := random.randint(10, 20)),
-        "description": f"Purchase {count} pokémon on the market",
+        "description": f"Purchase {count:,} pokémon on the market",
     },
 ]
 
@@ -289,12 +289,12 @@ class Anniversary(commands.Cog):
             if reward == "shards":
                 shards = max(round(random.normalvariate(35, 10)), 2)
                 update["$inc"]["premium_balance"] += shards
-                text.append(f"{shards} Shards")
+                text.append(f"{shards:,} Shards")
 
             elif reward == "pokecoins":
                 pokecoins = max(round(random.normalvariate(3000, 500)), 800)
                 update["$inc"]["balance"] += pokecoins
-                text.append(f"{pokecoins} Pokécoins")
+                text.append(f"{pokecoins:,} Pokécoins")
 
             elif reward == "redeem":
                 update["$inc"]["redeems"] += 1
@@ -311,7 +311,7 @@ class Anniversary(commands.Cog):
                 text.append(f"{self.bot.mongo.Pokemon.build_from_mongo(pokemon):lniP}")
 
         embed = self.bot.Embed(
-            title=f"Opening {amt} Anniversary Box{'' if amt == 1 else 'es'}...",
+            title=f"Opening {amt:,} Anniversary Box{'' if amt == 1 else 'es'}...",
         )
         embed.set_author(icon_url=ctx.author.display_avatar.url, name=str(ctx.author))
         embed.add_field(name="Rewards Received", value="\n".join(text))
@@ -327,7 +327,7 @@ class Anniversary(commands.Cog):
         """Give a box."""
 
         await self.bot.mongo.update_member(user, {"$inc": {"anniversary_boxes": num}})
-        await ctx.send(f"Gave **{user}** {num} Anniversary Boxes.")
+        await ctx.send(f"Gave **{user}** {num:,} Anniversary Boxes.")
 
     def verify_condition(self, condition, species, to=None):
         if condition is not None:

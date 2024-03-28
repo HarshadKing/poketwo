@@ -753,7 +753,7 @@ class Halloween(commands.Cog):
 
             match reward:
                 case "pc":
-                    text.append(f"- {count} {FlavorStrings.pokecoins:!e}")
+                    text.append(f"- {count:,} {FlavorStrings.pokecoins:!e}")
                     update["$inc"]["balance"] += count
                 case "sigil":
                     if drop_sigil:
@@ -762,7 +762,7 @@ class Halloween(commands.Cog):
                     else:
                         count = round(random.choice(SATCHEL_REWARD_AMOUNTS["pc"]) / 2)
                         text.append(
-                            f"- {getattr(FlavorStrings, SATCHEL_SIGILS[satchel])} -> {count} {FlavorStrings.pokecoins:!e}"
+                            f"- {getattr(FlavorStrings, SATCHEL_SIGILS[satchel])} -> {count:,} {FlavorStrings.pokecoins:!e}"
                         )
                         update["$inc"]["balance"] += count
                 case "event-sage" | "non-event" | "non-event-shiny":

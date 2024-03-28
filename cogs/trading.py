@@ -773,7 +773,7 @@ class Trading(commands.Cog):
             )
 
         result = await ctx.confirm(
-            f"Are you sure you want to trade **{num} pokémon**? Favorited and selected pokémon won't be added."
+            f"Are you sure you want to trade **{num:,} pokémon**? Favorited and selected pokémon won't be added."
             + await pokemon_cog.valuable_pokemon_details(ctx, aggregations)
         )
         if result is None:
@@ -783,7 +783,7 @@ class Trading(commands.Cog):
 
         # confirmed, add all
 
-        await ctx.send(f"Adding {num} pokémon, this might take a while...")
+        await ctx.send(f"Adding {num:,} pokémon, this might take a while...")
 
         pokemon = self.bot.mongo.fetch_pokemon_list(ctx.author, aggregations)
 

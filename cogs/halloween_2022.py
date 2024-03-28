@@ -79,7 +79,7 @@ class Halloween(commands.Cog):
         """Give a ticket."""
 
         await self.bot.mongo.update_member(user, {"$inc": {"halloween_tickets_2022": num}})
-        await ctx.send(f"Gave **{user}** {num} Trick-or-Treat tickets.")
+        await ctx.send(f"Gave **{user}** {num:,} Trick-or-Treat tickets.")
 
     @checks.has_started()
     @checks.is_not_in_trade()
@@ -146,7 +146,7 @@ class Halloween(commands.Cog):
         )
         await self.bot.mongo.update_member(ctx.author, {"$inc": {"halloween_tickets_2022": result.modified_count}})
         await ctx.send(
-            f"You offered {result.modified_count} pokémon. You received {result.modified_count:,} **🎫 Trick-or-Treat Tickets**!"
+            f"You offered {result.modified_count:,} pokémon. You received {result.modified_count:,} **🎫 Trick-or-Treat Tickets**!"
         )
         self.bot.dispatch("release", ctx.author, result.modified_count)
 
@@ -227,7 +227,7 @@ class Halloween(commands.Cog):
         # confirm
 
         result = await ctx.confirm(
-            f"Are you sure you want to offer **{num} pokémon**? Favorited, selected, and shiny pokémon won't be offered."
+            f"Are you sure you want to offer **{num:,} pokémon**? Favorited, selected, and shiny pokémon won't be offered."
         )
         if result is None:
             return await ctx.send("Time's up. Aborted.")
@@ -241,7 +241,7 @@ class Halloween(commands.Cog):
 
         num = await self.bot.mongo.fetch_pokemon_count(ctx.author, aggregations=aggregations)
 
-        await ctx.send(f"Offering {num} pokémon, this might take a while...")
+        await ctx.send(f"Offering {num:,} pokémon, this might take a while...")
 
         pokemon = self.bot.mongo.fetch_pokemon_list(ctx.author, aggregations)
 
@@ -253,7 +253,7 @@ class Halloween(commands.Cog):
         await self.bot.mongo.update_member(ctx.author, {"$inc": {"halloween_tickets_2022": result.modified_count}})
 
         await ctx.send(
-            f"You have offered {result.modified_count} pokémon. You received {result.modified_count:,} **🎫 Trick-or-Treat Tickets**!"
+            f"You have offered {result.modified_count:,} pokémon. You received {result.modified_count:,} **🎫 Trick-or-Treat Tickets**!"
         )
         self.bot.dispatch("release", ctx.author, result.modified_count)
 
@@ -299,7 +299,7 @@ class Halloween(commands.Cog):
             if reward == "shards":
                 shards = round(random.normalvariate(25, 10))
                 update["$inc"]["premium_balance"] += shards
-                text.append([title, f"{shards} Shards"])
+                text.append([title, f"{shards:,} Shards"])
 
             elif reward == "redeem":
                 update["$inc"]["redeems"] += 1
@@ -326,7 +326,7 @@ class Halloween(commands.Cog):
             embed = self.bot.Embed(title=text[0][0], description=text[0][1])
         else:
             embed = self.bot.Embed(
-                title=f"Trick-or-Treated {amount} times...", description="\n".join("　".join(x) for x in text)
+                title=f"Trick-or-Treated {amount:,} times...", description="\n".join("　".join(x) for x in text)
             )
         embed.set_author(icon_url=ctx.author.display_avatar.url, name=str(ctx.author))
 

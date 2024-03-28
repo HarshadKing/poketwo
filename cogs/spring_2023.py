@@ -70,7 +70,7 @@ def make_catch_type_quest(type):
         "event": "catch",
         "count": (count := random.randint(10, 20)),
         "condition": {"type": type},
-        "description": f"Catch {count} {type}-type pokémon",
+        "description": f"Catch {count:,} {type}-type pokémon",
     }
 
 
@@ -85,7 +85,7 @@ SPECIALIZED_QUESTS = {
             "event": "market_buy",
             "condition": {"id": [184, 427, 50096, 428, 10088, 659, 660, 813, 814, 815, 10201]},
             "count": (count := random.randint(5, 10)),
-            "description": f"Purchase {count} rabbit-like pokémon from the market",
+            "description": f"Purchase {count:,} rabbit-like pokémon from the market",
         },
         lambda: {
             "event": "market_add",
@@ -102,7 +102,7 @@ SPECIALIZED_QUESTS = {
                     # fmt: on
                 },
                 "count": (count := random.randint(5, 10)),
-                "description": f"Catch {count} baby pokémon",
+                "description": f"Catch {count:,} baby pokémon",
             }
         ),
     ],
@@ -110,7 +110,7 @@ SPECIALIZED_QUESTS = {
         lambda: {
             "event": "market_buy",
             "count": (count := random.randint(10, 20)),
-            "description": f"Purchase {count} pokémon on the market",
+            "description": f"Purchase {count:,} pokémon on the market",
         },
         lambda: {
             "event": "battle_start",
@@ -121,7 +121,7 @@ SPECIALIZED_QUESTS = {
         lambda: {
             "event": "release",
             "count": (count := random.randint(10, 20)),
-            "description": f"Release {count} pokémon",
+            "description": f"Release {count:,} pokémon",
         },
         make_catch_type_quest("Grass"),
     ],
@@ -130,12 +130,12 @@ SPECIALIZED_QUESTS = {
             "event": "catch",
             "count": (count := random.randint(5, 10)),
             "condition": {"id": [81]},
-            "description": f"Catch {count} magnemite",
+            "description": f"Catch {count:,} magnemite",
         },
         lambda: {
             "event": "battle_win",
             "count": (count := random.randint(1, 3)),
-            "description": f"Win a battle {count} times",
+            "description": f"Win a battle {count:,} times",
         },
     ],
     50093: [
@@ -155,12 +155,12 @@ QUESTS = [
     lambda: {
         "event": "trade",
         "count": (count := random.randint(3, 6)),
-        "description": f"Trade with {count} people",
+        "description": f"Trade with {count:,} people",
     },
     lambda: {
         "event": "evolve",
         "count": (count := random.randint(10, 15)),
-        "description": f"Evolve {count} pokémon",
+        "description": f"Evolve {count:,} pokémon",
     },
     make_catch_type_quest("Fairy"),
     make_catch_type_quest("Psychic"),
