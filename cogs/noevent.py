@@ -9,7 +9,7 @@ class NoEvent(commands.Cog):
         self.bot = bot
 
     @checks.has_started()
-    @commands.command()
+    @commands.command(aliases=("ev",))
     async def event(self, ctx):
         """No event."""
 
