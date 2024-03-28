@@ -15,5 +15,5 @@ default = (
     "spawning",
     "sprites",
     "trading",
-    "event",
+    "noevent",  # Comment this line before adding new event cogs, and add it back when ending events
 )
