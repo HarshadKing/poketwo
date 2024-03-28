@@ -799,6 +799,9 @@ class Pokemon(commands.Cog):
         event_filter = aggregations + await self.create_filter({"event": True}, ctx)
         shiny_filter = aggregations + await self.create_filter({"shiny": True}, ctx)
 
+        HIGHEST_IV_THRESHOLD = 90
+        highest_iv_filter = aggregations + await self.create_filter({"iv": [[f">{HIGHEST_IV_THRESHOLD}"]]}, ctx)
+
         HIGH_IV_THRESHOLD = 80
         high_iv_filter = aggregations + await self.create_filter({"iv": [[f">{HIGH_IV_THRESHOLD}"]]}, ctx)
 
@@ -810,6 +813,7 @@ class Pokemon(commands.Cog):
             "Event Pokémon": event_filter,
             "Rare Pokémon (Legendaries, Mythicals and Ultra Beasts)": rares_filter,
             "Regional Form Pokémon (Alolans, Galarians, Hisuians and Paldeans)": regionals_filter,
+            f"Pokémon with **IV > {HIGHEST_IV_THRESHOLD}%**": highest_iv_filter,
             f"Pokémon with **IV > {HIGH_IV_THRESHOLD}%**": high_iv_filter,
             f"Pokémon with **IV < {LOW_IV_THRESHOLD}%**": low_iv_filter,
         }
