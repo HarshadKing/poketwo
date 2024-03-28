@@ -1,11 +1,11 @@
 import contextlib
 import itertools
 import math
-import typing
 from collections import defaultdict
 from datetime import datetime
 from functools import cache
 from operator import itemgetter
+from typing import Optional
 
 import discord
 import pymongo
@@ -15,6 +15,7 @@ from pymongo import UpdateOne
 
 from data.constants import GENDER_TYPES
 from helpers import checks, constants, converters, flags, genders, pagination
+from helpers.context import PoketwoContext
 
 
 def isfloat(x):
@@ -62,7 +63,7 @@ class Pokemon(commands.Cog):
     async def nickname(
         self,
         ctx: commands.Context,
-        pokemon: typing.Optional[converters.PokemonConverter] = False,
+        pokemon: Optional[converters.PokemonConverter] = False,
         *nickname,
     ):
         """Change the nickname for your pokémon."""
@@ -716,29 +717,30 @@ class Pokemon(commands.Cog):
         # Numerical flags
 
         for flag, expr in constants.FILTER_BY_NUMERICAL.items():
-            for text in flags[flag] or []:
-                ops = self.parse_numerical_flag(text)
+            if flag in flags:
+                for text in flags[flag] or []:
+                    ops = self.parse_numerical_flag(text)
 
-                if ops is None:
-                    raise commands.BadArgument(f"Couldn't parse `--{flag} {' '.join(text)}`")
+                    if ops is None:
+                        raise commands.BadArgument(f"Couldn't parse `--{flag} {' '.join(text)}`")
 
-                ops[1] = float(ops[1])
+                    ops[1] = float(ops[1])
 
-                if flag == "iv":
-                    ops[1] = float(ops[1]) * 186 / 100
+                    if flag == "iv":
+                        ops[1] = float(ops[1]) * 186 / 100
 
-                if ops[0] == "<":
-                    aggregations.append(
-                        {"$match": {map_field(expr): {"$lt": math.ceil(ops[1])}}},
-                    )
-                elif ops[0] == "=":
-                    aggregations.append(
-                        {"$match": {map_field(expr): {"$eq": round(ops[1])}}},
-                    )
-                elif ops[0] == ">":
-                    aggregations.append(
-                        {"$match": {map_field(expr): {"$gt": math.floor(ops[1])}}},
-                    )
+                    if ops[0] == "<":
+                        aggregations.append(
+                            {"$match": {map_field(expr): {"$lt": math.ceil(ops[1])}}},
+                        )
+                    elif ops[0] == "=":
+                        aggregations.append(
+                            {"$match": {map_field(expr): {"$eq": round(ops[1])}}},
+                        )
+                    elif ops[0] == ">":
+                        aggregations.append(
+                            {"$match": {map_field(expr): {"$gt": math.floor(ops[1])}}},
+                        )
 
         for flag, amt in constants.FILTER_BY_DUPLICATES.items():
             if flag in flags and flags[flag] is not None:
@@ -771,6 +773,50 @@ class Pokemon(commands.Cog):
             aggregations.append({"$limit": flags["limit"]})
 
         return aggregations
+
+    async def valuable_pokemon_details(
+        self,
+        ctx: PoketwoContext,
+        aggregations: Optional[list] = None,
+        *,
+        header: Optional[str] = "This includes",
+    ) -> str:
+        """Function to get a string with list of valuable pokémon of the user included in the provided aggregation.
+        This shows the user valuable pokémon that are included in their provided flags for -all commands."""
+
+        aggregations = aggregations or []
+
+        rares_filter = aggregations + await self.create_filter({"mythical": True, "legendary": True, "ub": True}, ctx)
+        regionals_filter = aggregations + await self.create_filter(
+            {"alolan": True, "galarian": True, "hisuian": True, "paldean": True}, ctx
+        )
+        event_filter = aggregations + await self.create_filter({"event": True}, ctx)
+        shiny_filter = aggregations + await self.create_filter({"shiny": True}, ctx)
+
+        HIGH_IV_THRESHOLD = 80
+        high_iv_filter = aggregations + await self.create_filter({"iv": [[f">{HIGH_IV_THRESHOLD}"]]}, ctx)
+
+        LOW_IV_THRESHOLD = 10
+        low_iv_filter = aggregations + await self.create_filter({"iv": [[f"<{LOW_IV_THRESHOLD}"]]}, ctx)
+
+        filters = {
+            "✨ Shiny Pokémon": shiny_filter,
+            "Event Pokémon": event_filter,
+            "Rare Pokémon (Legendaries, Mythicals and Ultra Beasts)": rares_filter,
+            "Regional Form Pokémon (Alolans, Galarians, Hisuians and Paldeans)": regionals_filter,
+            f"Pokémon with **IV > {HIGH_IV_THRESHOLD}%**": high_iv_filter,
+            f"Pokémon with **IV < {LOW_IV_THRESHOLD}%**": low_iv_filter,
+        }
+
+        counts = {
+            msg: count
+            for msg, filter in filters.items()
+            if (count := await self.bot.mongo.fetch_pokemon_count(ctx.author, filter))
+        }
+        if counts:
+            return f"\n### {header}:\n" + "\n".join([f"- **{count:,}** {msg}" for msg, count in counts.items()])
+        else:
+            return ""
 
     @checks.has_started()
     @checks.is_not_in_trade()
