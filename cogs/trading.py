@@ -774,6 +774,7 @@ class Trading(commands.Cog):
 
         result = await ctx.confirm(
             f"Are you sure you want to trade **{num:,} pokémon**? Favorited and selected pokémon won't be added."
+            + await pokemon_cog.valuable_pokemon_details(ctx, aggregations)
         )
         if result is None:
             return await ctx.send("Time's up. Aborted.")

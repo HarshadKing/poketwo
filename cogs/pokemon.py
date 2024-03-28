@@ -184,7 +184,7 @@ class Pokemon(commands.Cog):
         else:
             message = f"Are you sure you want to rename {num:,} pokémon to `{nicknameall}`?"
 
-        result = await ctx.confirm(message)
+        result = await ctx.confirm(message + await self.valuable_pokemon_details(ctx, aggregations))
         if result is None:
             return await ctx.send("Time's up. Aborted.")
         if result is False:
@@ -343,7 +343,10 @@ class Pokemon(commands.Cog):
 
         # confirm
 
-        result = await ctx.confirm(f"Are you sure you want to **favorite** your {unfavnum:,} pokémon?")
+        result = await ctx.confirm(
+            f"Are you sure you want to **favorite** your {unfavnum:,} pokémon?"
+            + await self.valuable_pokemon_details(ctx, aggregations)
+        )
         if result is None:
             return await ctx.send("Time's up. Aborted.")
         if result is False:
@@ -441,7 +444,10 @@ class Pokemon(commands.Cog):
 
         # confirm
 
-        result = await ctx.confirm(f"Are you sure you want to **unfavorite** your {favnum:,} pokémon?")
+        result = await ctx.confirm(
+            f"Are you sure you want to **unfavorite** your {favnum:,} pokémon?"
+            + await self.valuable_pokemon_details(ctx, aggregations)
+        )
         if result is None:
             return await ctx.send("Time's up. Aborted.")
         if result is False:
@@ -970,6 +976,7 @@ class Pokemon(commands.Cog):
 
         result = await ctx.confirm(
             f"Are you sure you want to release **{num:,} pokémon** for {num*2:,} pc? Favorited and selected pokémon won't be removed."
+            + await self.valuable_pokemon_details(ctx, aggregations)
         )
         if result is None:
             return await ctx.send("Time's up. Aborted.")
