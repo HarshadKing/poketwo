@@ -298,7 +298,7 @@ class Market(commands.Cog):
             self.bot.loop.create_task(
                 self.bot.send_dm(
                     listing["owner_id"],
-                    f"Someone purchased your **{pokemon}** from the market (Listing #{listing['market_data']['_id']}). You received {listing['market_data']['price']:,} Pokécoins!",
+                    f"Someone purchased your **{pokemon}** from the market. You received {listing['market_data']['price']:,} Pokécoins!",
                 )
             )
 
