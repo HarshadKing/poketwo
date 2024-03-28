@@ -1,10 +1,26 @@
-from datetime import datetime, timezone
 from textwrap import dedent
 
-import discord
 from discord.ext import commands
 
 from helpers import checks
+
+
+# For future events, add this cog to cogs/__init__.py and just change these
+
+TITLE = "Spring Overgrown 🌱"
+DESCRIPTION = dedent(
+    f"""
+    Spring came earlier than expected, which seems to be affecting many Pokémon. Three Pokémon in particular show these overgrown symptoms, catch them before they flee!
+
+    The following Pokémon will appear in the wild to be caught for a week!
+    - Overgrown Mawile
+    - Blossom Cherrim
+    - Overgrown Carnivine
+
+    Happy catching! 🌿
+    """
+)
+COLOR = 0xB1D99C
 
 
 class Event(commands.Cog):
@@ -18,22 +34,10 @@ class Event(commands.Cog):
     async def event(self, ctx):
         """Command to show any currently running event, if any."""
 
-        ends_at = datetime(2024, 3, 27, 21, tzinfo=timezone.utc)
         embed = self.bot.Embed(
-            title="Spring Overgrown 🌱",
-            description=dedent(
-                f"""
-                Spring came earlier than expected, which seems to be affecting many Pokémon. Three Pokémon in particular show these overgrown symptoms, catch them before they flee!
-
-                The following Pokémon will appear in the wild to be caught for a week!
-                - Overgrown Mawile
-                - Blossom Cherrim
-                - Overgrown Carnivine
-
-                Ends at {discord.utils.format_dt(ends_at)}. Happy catching! 🌿
-                """
-            ),
-            color=0xB1D99C,
+            title=TITLE,
+            description=DESCRIPTION,
+            color=COLOR,
         )
         await ctx.send(embed=embed)
 
