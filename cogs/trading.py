@@ -306,9 +306,7 @@ class Trading(commands.Cog):
 
         # Send msg
 
-        pages = pagination.ContinuablePages(
-            pagination.FunctionPageSource(num_pages, get_page), mention_author=mention_author
-        )
+        pages = pagination.ContinuablePages(pagination.FunctionPageSource(num_pages, get_page), mention_author=mention_author)
         self.bot.menus[a.id] = pages
         self.bot.menus[b.id] = pages
         if menu := trade.get("menu"):
@@ -737,8 +735,7 @@ class Trading(commands.Cog):
 
         member = await self.bot.mongo.fetch_member_info(ctx.author)
 
-        pokemon_cog = self.bot.get_cog("Pokemon")
-        aggregations = await pokemon_cog.create_filter(flags, ctx, order_by=member.order_by)
+        aggregations = await self.bot.get_cog("Pokemon").create_filter(flags, ctx, order_by=member.order_by)
 
         if aggregations is None:
             return
@@ -754,8 +751,7 @@ class Trading(commands.Cog):
 
         if num == 0:
             return await ctx.reply(
-                "Found no pokémon matching this search (excluding favorited and selected pokémon).",
-                mention_author=mention_author,
+                "Found no pokémon matching this search (excluding favorited and selected pokémon).", mention_author=mention_author
             )
 
         # confirm
@@ -774,7 +770,6 @@ class Trading(commands.Cog):
 
         result = await ctx.confirm(
             f"Are you sure you want to trade **{num:,} pokémon**? Favorited and selected pokémon won't be added."
-            + await pokemon_cog.valuable_pokemon_details(ctx, aggregations)
         )
         if result is None:
             return await ctx.send("Time's up. Aborted.")

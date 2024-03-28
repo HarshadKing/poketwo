@@ -691,9 +691,7 @@ class Mongo(commands.Cog):
             then be inserted into the database using `collection.insert`.
         """
 
-        # Not sure if this instance check is the best way to do this, but isinstance does not work
-        is_member_document = getattr(getattr(member, "opts", None), "template", None) == Member
-        if not is_member_document and hasattr(member, "id"):
+        if (not isinstance(member, Member)) and hasattr(member, "id"):
             member = await self.fetch_member_info(member)
 
         ivs = [random_iv() for _ in range(6)]
@@ -708,7 +706,6 @@ class Mongo(commands.Cog):
 
         possible_moves = [x.move.id for x in species.moves if level >= x.method.level]
         moves = random.sample(possible_moves, k=min(len(possible_moves), 4))
-        idx = kwargs.pop("idx", None) or await self.fetch_next_idx(member)
 
         return {
             "owner_id": int(member.id),
@@ -727,7 +724,7 @@ class Mongo(commands.Cog):
             "shiny": shiny,
             "gender": gender,
             "moves": moves,
-            "idx": idx,
+            "idx": kwargs.pop("idx", await self.fetch_next_idx(member)),
             **kwargs,
         }
 
