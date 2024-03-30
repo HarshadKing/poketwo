@@ -406,6 +406,12 @@ class Member(Document):
     valentines_2024_catches = fields.IntegerField(default=0)
     valentines_2024_boxes = fields.IntegerField(default=0)
 
+    easter_2024_quests = fields.ListField(fields.DictField(), default=list)
+    easter_2024_boxes = fields.IntegerField(default=0)
+    easter_2024_boxes_opened = fields.IntegerField(default=0)
+    easter_2024_bingos_awarded = fields.IntegerField(default=0)
+    easter_2024_boards_completed = fields.IntegerField(default=0)
+
     @property
     def selected_pokemon(self):
         try:
