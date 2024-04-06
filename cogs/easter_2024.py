@@ -18,24 +18,24 @@ EASTER_PREFIX = "easter_2024_"
 
 REGION_RANGES = unwind(
     {
-        ("paldea",): range(10, 15),
-        ("kanto", "johto", "hoenn", "unova"): range(7, 9),
-        ("sinnoh", "alola", "kalos", "galar"): range(6, 8),
+        ("paldea",): range(20, 30),
+        ("kanto", "johto", "hoenn", "unova"): range(14, 18),
+        ("sinnoh", "alola", "kalos", "galar"): range(12, 16),
     }
 )
 REGIONS = tuple(REGION_RANGES)
 
 TYPE_RANGES = unwind(
     {
-        ("Normal", "Water", "Grass", "Flying", "Bug"): range(8, 10),
-        ("Poison", "Ground", "Psychic", "Rock", "Electric", "Ghost"): range(7, 9),
-        ("Dragon", "Fire", "Fairy", "Dark", "Fighting", "Steel", "Ice"): range(6, 8),
+        ("Normal", "Water", "Grass", "Flying", "Bug"): range(16, 20),
+        ("Poison", "Ground", "Psychic", "Rock", "Electric", "Ghost"): range(14, 18),
+        ("Dragon", "Fire", "Fairy", "Dark", "Fighting", "Steel", "Ice"): range(12, 16),
     }
 )
 TYPES = tuple(TYPE_RANGES)
 
 GENDER_RANGES = unwind(
-    {("male", "female"): range(12, 18), ("unknown",): range(3, 6)},
+    {("male", "female"): range(24, 36), ("unknown",): range(6, 12)},
 )
 GENDERS = tuple(GENDER_RANGES)
 
@@ -74,11 +74,6 @@ GUARANTEED_QUESTS = [
         "description": f"Catch {count} pokémon",
     },
     lambda: {
-        "event": "open_box",
-        "count": 1,
-        "description": "Open a voting box",
-    },
-    lambda: {
         "event": "trade",
         "count": (count := random.randint(3, 6)),
         "description": f"Trade with {count} people",
@@ -109,6 +104,15 @@ POSSIBLE_QUESTS = [
     *[make_catch_type_quest(type) for type in TYPES],
     *[make_catch_region_quest(type) for type in REGIONS],
     *[make_catch_gender_quest(type) for type in GENDERS],
+]
+
+VOTE_BOX_QUEST_CHANCE = 0.5
+VOTE_BOX_QUEST = [
+    lambda: {
+        "event": "open_box",
+        "count": 1,
+        "description": "Open a voting box",
+    },
 ]
 
 BOX_REWARDS = {
@@ -168,9 +172,14 @@ class Easter(commands.Cog):
         return quests
 
     def generate_quests(self):
+        vote_box_quest = VOTE_BOX_QUEST.copy()
+        if random.random() >= VOTE_BOX_QUEST_CHANCE:
+            vote_box_quest.clear()
+
         quests = [
             *[x() for x in GUARANTEED_QUESTS],
-            *[x() for x in random.sample(POSSIBLE_QUESTS, k=24 - len(GUARANTEED_QUESTS))],
+            *[x() for x in vote_box_quest],
+            *[x() for x in random.sample(POSSIBLE_QUESTS, k=24 - len(GUARANTEED_QUESTS) - len(vote_box_quest))],
         ]
         random.shuffle(quests)
         quests.insert(12, {"event": "free", "count": 0, "description": "Free Space"})
@@ -213,7 +222,7 @@ class Easter(commands.Cog):
     async def easter(self, ctx: commands.Context):
         """View easter event information."""
 
-        await self.check_quests(ctx.author)
+        await self.check_quests(ctx.author, context=ctx)
 
         member = await self.bot.mongo.db.member.find_one({"_id": ctx.author.id})
 
@@ -276,16 +285,6 @@ class Easter(commands.Cog):
         if member.easter_2024_bingos_awarded < BINGOS_PER_BOARD:
             return await ctx.send("You must have a full card to do this!")
 
-        result = await ctx.confirm("Are you sure you would like to reset your card? This cannot be undone.")
-        if result is None:
-            return await ctx.send("Time's up. Aborted.")
-        if result is False:
-            return await ctx.send("Aborted.")
-
-        member = await self.bot.mongo.fetch_member_info(ctx.author)
-        if member.easter_2024_bingos_awarded < BINGOS_PER_BOARD:
-            return await ctx.send("You must have a full card to do this!")
-
         quests = [{**x, "progress": 0} for x in self.generate_quests()]
         await self.bot.mongo.update_member(
             ctx.author,
@@ -329,12 +328,12 @@ class Easter(commands.Cog):
         added_pokemon = []
         for reward in rewards:
             if reward == "shards":
-                shards = random.randint(5, 15)
+                shards = random.randint(15, 55)
                 update["$inc"]["premium_balance"] += shards
                 text.append(f"{shards} Shards")
 
             elif reward == "pokecoins":
-                pokecoins = random.randint(500, 1000)
+                pokecoins = random.randint(2000, 4000)
                 update["$inc"]["balance"] += pokecoins
                 text.append(f"{pokecoins} Pokécoins")
 
@@ -460,7 +459,7 @@ class Easter(commands.Cog):
         if len(incs) > 0:
             await self.bot.mongo.update_member(ctx.author, {"$inc": incs})
 
-        await self.check_quests(ctx.author)
+        await self.check_quests(ctx.author, context=ctx)
 
     @commands.Cog.listener()
     async def on_market_buy(self, user, listing):
@@ -593,7 +592,7 @@ class Easter(commands.Cog):
             with contextlib.suppress(discord.HTTPException):
                 await user.send("\n".join(chunk))
 
-    async def check_quests(self, user):
+    async def check_quests(self, user, context=None):
         quests = await self.get_quests(user)
         if quests is None:
             return
@@ -611,7 +610,11 @@ class Easter(commands.Cog):
                         f"You have completed Easter Quest {'ABCDE'[i % 5]}{i // 5 + 1} ({q['description']}) and received an **Easter Egg**!"
                     )
 
-        await self.send_chunked_lines(user, messages)
+        if context:
+            for message in messages:
+                await context.send(f"Congratulations {user.mention}! {message}")
+        else:
+            await self.send_chunked_lines(user, messages)
         await self.check_bingos(user)
 
     async def check_bingos(self, user):
