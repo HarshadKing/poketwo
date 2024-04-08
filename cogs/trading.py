@@ -1,4 +1,5 @@
 import asyncio
+from collections import defaultdict
 import math
 import random
 from datetime import datetime, timedelta
@@ -162,7 +163,7 @@ class Trading(commands.Cog):
 
         # Check if done
 
-        embeds = []
+        evolutions = defaultdict(dict)
 
         if done:
             try:
@@ -248,24 +249,11 @@ class Trading(commands.Cog):
                             if len(evos) > 0:
                                 evo = random.choice(evos)
 
-                                evo_embed = self.bot.Embed(title=f"Congratulations {omem.display_name}!")
-
-                                name = str(pokemon.species)
-
-                                if pokemon.nickname is not None:
-                                    name += f' "{pokemon.nickname}"'
-
-                                evo_embed.add_field(
-                                    name=f"The {name} is evolving!",
-                                    value=f"The {name} has turned into a {evo.target}!",
-                                )
-
                                 self.bot.dispatch("evolve", mem, pokemon, evo.target)
                                 self.bot.dispatch("evolve", omem, pokemon, evo.target)
 
                                 update["$set"]["species_id"] = evo.target.id
-
-                                embeds.append(evo_embed)
+                                evolutions[omem][format(pokemon, "Pgnx")] = evo.target
 
                         await self.bot.mongo.update_pokemon(
                             pokemon,
@@ -318,8 +306,17 @@ class Trading(commands.Cog):
         await pages.start(ctx)
         trade["menu"] = pages
 
-        for evo_embed in embeds:
-            await ctx.send(embed=evo_embed)
+        for member, evos in evolutions.items():
+            for chunk in discord.utils.as_chunks(evos.items(), 20):
+                evo_embed = self.bot.Embed(title=f"Congratulations {member.display_name}!")
+                for pokemon_name, evo in chunk:
+                    evo_embed.add_field(
+                        name=f"The **{pokemon_name}** is evolving!",
+                        value=f"The **{pokemon_name}** has turned into a **{evo}**!",
+                        inline=True,
+                    )
+
+                await ctx.send(embed=evo_embed)
 
     @checks.has_started()
     @commands.guild_only()
