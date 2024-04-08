@@ -1,4 +1,5 @@
 import contextlib
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 import discord
@@ -22,6 +23,20 @@ class AuctionConverter(commands.Converter):
             raise commands.BadArgument("Could not find auction with that ID.")
 
         return auction
+
+
+@dataclass
+class AuctionData:
+    _id: int
+    guild_id: int
+    current_bid: int
+    bid_increment: int
+    bidder_id: int | None
+    ends: datetime
+
+    @property
+    def next_bid(self) -> int:
+        return self.current_bid + self.bid_increment
 
 
 class Auctions(commands.Cog):
@@ -59,7 +74,9 @@ class Auctions(commands.Cog):
         return FakeUser(id)
 
     async def end_auction(self, auction):
-        if (auction_guild := self.bot.get_guild(auction["auction_data"]["guild_id"])) is None:
+        auction_data = AuctionData(**auction["auction_data"])
+
+        if (auction_guild := self.bot.get_guild(auction_data.guild_id)) is None:
             return
 
         guild = await self.bot.mongo.fetch_guild(auction_guild)
@@ -67,14 +84,14 @@ class Auctions(commands.Cog):
         host = await self.try_get_member(auction_guild, auction["owner_id"])
         new_owner = host
 
-        if auction["auction_data"]["bidder_id"] is not None:
-            bidder = await self.try_get_member(auction_guild, auction["auction_data"]["bidder_id"])
+        if auction_data.bidder_id is not None:
+            bidder = await self.try_get_member(auction_guild, auction_data.bidder_id)
             new_owner = bidder
 
-            embed = self.make_base_embed(host, pokemon, auction["auction_data"]["_id"])
+            embed = self.make_base_embed(host, pokemon, auction_data._id)
             embed.title = f"[SOLD] {embed.title}"
             auction_info = (
-                f"**Winning Bid:** {auction['auction_data']['current_bid']:,} Pokécoins",
+                f"**Winning Bid:** {auction_data.current_bid:,} Pokécoins",
                 f"**Bidder:** {bidder.mention}",
             )
             embed.add_field(name="Auction Details", value="\n".join(auction_info))
@@ -84,32 +101,32 @@ class Auctions(commands.Cog):
                 with contextlib.suppress(discord.HTTPException):
                     await auction_channel.send(embed=embed)
             with contextlib.suppress(discord.HTTPException):
-                msg = f"The auction for your **{pokemon}** ended with a highest bid of **{auction['auction_data']['current_bid']:,}** Pokécoins (Auction #{auction['auction_data']['_id']})."
+                msg = f"The auction for your **{pokemon}** ended with a highest bid of **{auction_data.current_bid:,}** Pokécoins (Auction #{auction_data._id})."
                 await host.send(msg)
             with contextlib.suppress(discord.HTTPException):
-                msg = f"You won the auction for the **{pokemon}** with a bid of **{auction['auction_data']['current_bid']:,}** Pokécoins (Auction #{auction['auction_data']['_id']})."
+                msg = f"You won the auction for the **{pokemon}** with a bid of **{auction_data.current_bid:,}** Pokécoins (Auction #{auction_data._id})."
                 await bidder.send(msg)
 
-            await self.bot.mongo.update_member(host, {"$inc": {"balance": auction["auction_data"]["current_bid"]}})
+            await self.bot.mongo.update_member(host, {"$inc": {"balance": auction_data.current_bid}})
             await self.bot.mongo.db.logs.insert_one(
                 {
                     "event": "auction",
-                    "user": auction["auction_data"]["bidder_id"],
+                    "user": auction_data.bidder_id,
                     "item": auction["_id"],
                     "seller_id": auction["owner_id"],
-                    "listing_id": auction["auction_data"]["_id"],
-                    "price": auction["auction_data"]["current_bid"],
+                    "listing_id": auction_data._id,
+                    "price": auction_data.current_bid,
                 }
             )
         else:
             with contextlib.suppress(discord.HTTPException):
-                msg = f"The auction for your **{pokemon}** ended with no bids (Auction #{auction['auction_data']['_id']})."
+                msg = f"The auction for your **{pokemon}** ended with no bids (Auction #{auction_data._id})."
                 await host.send(msg)
 
         # ok, bid
 
         await self.bot.mongo.db.pokemon.update_one(
-            {"owned_by": "auction", "auction_data._id": auction["auction_data"]["_id"]},
+            {"owned_by": "auction", "auction_data._id": auction_data._id},
             {
                 "$set": {
                     "owner_id": new_owner.id,
@@ -277,13 +294,15 @@ class Auctions(commands.Cog):
     async def lowerstart(self, ctx, auction: AuctionConverter, new_start: int):
         """Lower the starting bid for your auction."""
 
+        auction_data = AuctionData(**auction["auction_data"])
+
         if ctx.author.id != auction["owner_id"]:
             return await ctx.send("You can only lower the starting bid on your own auction.")
-        if auction["auction_data"]["bidder_id"] is not None:
+        if auction_data.bidder_id is not None:
             return await ctx.send("Someone has already bid on this auction.")
-        if auction["auction_data"]["current_bid"] + auction["auction_data"]["bid_increment"] < new_start:
+        if auction_data.current_bid + auction_data.bid_increment < new_start:
             return await ctx.send("You may only lower the starting bid, not increase it.")
-        if auction["auction_data"]["bid_increment"] > new_start:
+        if auction_data.bid_increment > new_start:
             return await ctx.send("You may not set the new starting bid to a value less than your bid increment.")
 
         # Verification
@@ -300,25 +319,25 @@ class Auctions(commands.Cog):
         # Go
         guild = await self.bot.mongo.fetch_guild(ctx.guild)
 
-        embed = self.make_base_embed(ctx.author, pokemon, auction["auction_data"]["_id"])
+        embed = self.make_base_embed(ctx.author, pokemon, auction_data._id)
         auction_info = (
             f"**Starting Bid:** {new_start:,} Pokécoins",
-            f"**Bid Increment:** {auction['auction_data']['bid_increment']:,} Pokécoins",
+            f"**Bid Increment:** {auction_data.bid_increment:,} Pokécoins",
         )
         embed.add_field(name="Auction Details", value="\n".join(auction_info))
         embed.set_footer(
-            text=f"Bid with `{ctx.clean_prefix}auction bid {auction['auction_data']['_id']} <bid>`\n"
-            f"Ends in {converters.strfdelta(auction['auction_data']['ends'] - datetime.utcnow())} at"
+            text=f"Bid with `{ctx.clean_prefix}auction bid {auction_data._id} <bid>`\n"
+            f"Ends in {converters.strfdelta(auction_data.ends - datetime.utcnow())} at"
         )
-        embed.timestamp = auction["auction_data"]["ends"]
+        embed.timestamp = auction_data.ends
 
         auction_channel = ctx.guild.get_channel(guild.auction_channel)
         if auction_channel is not None:
             self.bot.loop.create_task(auction_channel.send(embed=embed))
 
         await self.bot.mongo.db.pokemon.update_one(
-            {"owned_by": "auction", "auction_data._id": auction["auction_data"]["_id"]},
-            {"$set": {"auction_data.current_bid": new_start - auction["auction_data"]["bid_increment"]}},
+            {"owned_by": "auction", "auction_data._id": auction_data._id},
+            {"$set": {"auction_data.current_bid": new_start - auction_data.bid_increment}},
         )
         await ctx.send(f"Lowered the starting bid on your auction to **{new_start:,} Pokécoins**.")
 
@@ -329,19 +348,21 @@ class Auctions(commands.Cog):
     async def bid(self, ctx, auction: AuctionConverter, bid: int):
         """Bid on an auction."""
 
+        auction_data = AuctionData(**auction["auction_data"])
+
         if ctx.author.id == auction["owner_id"]:
             return await ctx.send("You can't bid on your own auction.")
-        if ctx.author.id == auction["auction_data"]["bidder_id"]:
+        if ctx.author.id == auction_data.bidder_id:
             return await ctx.send("You are already the highest bidder.")
-        if bid < auction["auction_data"]["current_bid"] + auction["auction_data"]["bid_increment"]:
-            return await ctx.send(
-                f"Your bid must be at least {auction['auction_data']['current_bid'] + auction['auction_data']['bid_increment']:,} Pokécoins."
-            )
+
+        if bid < auction_data.next_bid:
+            return await ctx.send(f"Your bid must be at least {auction_data.next_bid:,} Pokécoins.")
 
         guild = await self.bot.mongo.fetch_guild(ctx.guild)
         member = await self.bot.mongo.fetch_member_info(ctx.author)
         if member.balance < bid:
             return await ctx.send("You don't have enough Pokécoins for that!")
+
         pokemon = self.bot.mongo.Pokemon.build_from_mongo(auction)
 
         # confirm
@@ -355,18 +376,17 @@ class Auctions(commands.Cog):
         # go!
 
         auction = await self.bot.mongo.db.pokemon.find_one(
-            {"owned_by": "auction", "auction_data._id": auction["auction_data"]["_id"]}
+            {"owned_by": "auction", "auction_data._id": auction_data._id}
         )
-
         if auction is None:
             return await ctx.send("Couldn't find that auction!")
 
-        if bid < auction["auction_data"]["current_bid"] + auction["auction_data"]["bid_increment"]:
-            return await ctx.send(
-                f"Your bid must be at least {auction['auction_data']['current_bid'] + auction['auction_data']['bid_increment']:,} Pokécoins."
-            )
+        auction_data = AuctionData(**auction["auction_data"])
 
-        if auction["auction_data"]["ends"] < datetime.utcnow():
+        if bid < auction_data.next_bid:
+            return await ctx.send(f"Your bid must be at least {auction_data.next_bid:,} Pokécoins.")
+
+        if auction_data.ends < datetime.utcnow():
             return await ctx.send("This auction has ended.")
 
         member = await self.bot.mongo.fetch_member_info(ctx.author)
@@ -374,12 +394,6 @@ class Auctions(commands.Cog):
             return await ctx.send("You don't have enough Pokécoins for that!")
 
         # ok, bid
-
-        res = await self.bot.mongo.db.member.find_one_and_update({"_id": ctx.author.id}, {"$inc": {"balance": -bid}})
-        await self.bot.redis.hdel("db:member", ctx.author.id)
-        if res["balance"] < bid:
-            await self.bot.mongo.update_member(ctx.author, {"$inc": {"balance": bid}})
-            return await ctx.send("You don't have enough Pokécoins for that!")
 
         # check to make sure still there
 
@@ -390,53 +404,72 @@ class Auctions(commands.Cog):
             }
         }
 
-        if datetime.utcnow() + timedelta(minutes=5) > auction["auction_data"]["ends"]:
-            update["$set"]["auction_data.ends"] = datetime.utcnow() + timedelta(minutes=5)
+        now = datetime.utcnow()
+        ends = auction_data.ends
+        if (extension := now + timedelta(minutes=5)) > ends:
+            ends = extension
+            update["$set"]["auction_data.ends"] = ends
 
-        r = await self.bot.mongo.db.pokemon.update_one(
-            {"owned_by": "auction", "auction_data._id": auction["auction_data"]["_id"]}, update
+        auction = await self.bot.mongo.db.pokemon.find_one_and_update(
+            {
+                "owned_by": "auction",
+                "auction_data._id": auction_data._id,
+                "auction_data.current_bid": auction_data.current_bid,
+            },
+            update,
         )
+        if auction is None:
+            auction = await self.bot.mongo.db.pokemon.find_one(
+                {"owned_by": "auction", "auction_data._id": auction_data._id}
+            )
+            if auction is None:
+                return await ctx.send("That auction has already ended.")
+            else:
+                return await ctx.send("The current bid on this auction has changed. Please try again.")
 
-        if r.modified_count == 0:
+        auction_data = AuctionData(**auction["auction_data"])
+
+        res = await self.bot.mongo.db.member.find_one_and_update({"_id": ctx.author.id}, {"$inc": {"balance": -bid}})
+        await self.bot.redis.hdel("db:member", ctx.author.id)
+        if res["balance"] < bid:
             await self.bot.mongo.update_member(ctx.author, {"$inc": {"balance": bid}})
-            return await ctx.send("That auction has already ended.")
+            return await ctx.send("You don't have enough Pokécoins for that!")
 
-        if auction["auction_data"]["bidder_id"] is not None:
-            await self.bot.mongo.update_member(
-                auction["auction_data"]["bidder_id"], {"$inc": {"balance": auction["auction_data"]["current_bid"]}}
-            )
-            self.bot.loop.create_task(
+        if auction_data.bidder_id is not None:
+            await self.bot.mongo.update_member(auction_data.bidder_id, {"$inc": {"balance": auction_data.current_bid}})
+            with contextlib.suppress(discord.HTTPException):
                 self.bot.send_dm(
-                    auction["auction_data"]["bidder_id"],
-                    f"You have been outbid on the **{pokemon}** (Auction #{auction['auction_data']['_id']}). New bid: {bid:,} Pokécoins.",
+                    auction_data.bidder_id,
+                    f"You have been outbid on the **{pokemon}** (Auction #{auction_data._id}). New bid: {bid:,} Pokécoins.",
                 )
-            )
 
-        await ctx.send(
-            f"You bid **{bid:,} Pokécoins** on the **{pokemon}** (Auction #{auction['auction_data']['_id']})."
-        )
+        with contextlib.suppress(discord.HTTPException):
+            await ctx.reply(
+                f"You bid **{bid:,} Pokécoins** on the **{pokemon}** (Auction #{auction_data._id}).",
+                mention_author=False,
+            )
 
         # send embed
 
         host = await self.try_get_member(ctx.guild, auction["owner_id"])
 
-        embed = self.make_base_embed(host, pokemon, auction["auction_data"]["_id"])
+        embed = self.make_base_embed(host, pokemon, auction_data._id)
 
         auction_info = (
             f"**Current Bid:** {bid:,} Pokécoins",
             f"**Bidder:** {ctx.author.mention}",
-            f"**Bid Increment:** {auction['auction_data']['bid_increment']:,} Pokécoins",
+            f"**Bid Increment:** {auction_data.bid_increment:,} Pokécoins",
         )
         embed.add_field(name="Auction Details", value="\n".join(auction_info))
         embed.set_footer(
-            text=f"Bid with `{ctx.clean_prefix}auction bid {auction['auction_data']['_id']} <bid>`\n"
-            f"Ends in {converters.strfdelta(auction['auction_data']['ends'] - datetime.utcnow())} at"
+            text=f"Bid with `{ctx.clean_prefix}auction bid {auction_data._id} <bid>`\n"
+            f"Ends in {converters.strfdelta(ends - now)} at"
         )
-        embed.timestamp = auction["auction_data"]["ends"]
+        embed.timestamp = ends
 
         auction_channel = ctx.guild.get_channel(guild.auction_channel)
         if auction_channel is not None:
-            self.bot.loop.create_task(auction_channel.send(embed=embed))
+            await auction_channel.send(embed=embed)
 
     # TODO put all these flags into a single decorator
 
@@ -527,18 +560,19 @@ class Auctions(commands.Cog):
             menu.maxn = max(auction["auction_data"]["_id"] for auction in items)
 
         def format_item(menu, auction):
+            auction_data = AuctionData(**auction["auction_data"])
             pokemon = self.bot.mongo.Pokemon.build_from_mongo(auction)
-            if auction["auction_data"]["bidder_id"] is not None:
+            if auction_data.bidder_id is not None:
                 return (
-                    f"`{padn(auction['auction_data']['_id'], menu.maxn)}`　**{pokemon:Lig}**　•　"
-                    f"{pokemon.iv_total / 186:.2%}　•　CB: {auction['auction_data']['current_bid']:,}　•　"
-                    f"BI: {auction['auction_data']['bid_increment']:,} pc　•　{converters.strfdelta(auction['auction_data']['ends'] - now, max_len=1)}"
+                    f"`{padn(auction_data._id, menu.maxn)}`　**{pokemon:Lig}**　•　"
+                    f"{pokemon.iv_total / 186:.2%}　•　CB: {auction_data.current_bid:,}　•　"
+                    f"BI: {auction_data.bid_increment:,} pc　•　{converters.strfdelta(auction_data.ends - now, max_len=1)}"
                 )
             else:
                 return (
-                    f"`{padn(auction['auction_data']['_id'], menu.maxn)}`　**{pokemon:Lig}**　•　"
-                    f"{pokemon.iv_total / 186:.2%}　•　SB: {auction['auction_data']['current_bid'] + auction['auction_data']['bid_increment']:,} pc　•　"
-                    f"{converters.strfdelta(auction['auction_data']['ends'] - now, max_len=1)}"
+                    f"`{padn(auction_data._id, menu.maxn)}`　**{pokemon:Lig}**　•　"
+                    f"{pokemon.iv_total / 186:.2%}　•　SB: {auction_data.current_bid + auction_data.bid_increment:,} pc　•　"
+                    f"{converters.strfdelta(auction_data.ends - now, max_len=1)}"
                 )
 
         count = await self.bot.mongo.fetch_auction_count(ctx.guild, aggregations)
@@ -571,29 +605,30 @@ class Auctions(commands.Cog):
     async def info(self, ctx, auction: AuctionConverter):
         """View a pokémon from an auction."""
 
+        auction_data = AuctionData(**auction["auction_data"])
         pokemon = self.bot.mongo.Pokemon.build_from_mongo(auction)
         host = await self.try_get_member(ctx.guild, auction["owner_id"])
-        embed = self.make_base_embed(host, pokemon, auction["auction_data"]["_id"])
+        embed = self.make_base_embed(host, pokemon, auction_data._id)
 
-        if auction["auction_data"]["bidder_id"] is None:
+        if auction_data.bidder_id is None:
             auction_info = (
-                f"**Starting Bid:** {auction['auction_data']['current_bid'] + auction['auction_data']['bid_increment']:,} Pokécoins",
-                f"**Bid Increment:** {auction['auction_data']['bid_increment']:,} Pokécoins",
+                f"**Starting Bid:** {auction_data.current_bid + auction_data.bid_increment:,} Pokécoins",
+                f"**Bid Increment:** {auction_data.bid_increment:,} Pokécoins",
             )
         else:
-            bidder = await self.try_get_member(ctx.guild, auction["auction_data"]["bidder_id"])
+            bidder = await self.try_get_member(ctx.guild, auction_data.bidder_id)
             auction_info = (
-                f"**Current Bid:** {auction['auction_data']['current_bid']:,} Pokécoins",
+                f"**Current Bid:** {auction_data.current_bid:,} Pokécoins",
                 f"**Bidder:** {bidder.mention}",
-                f"**Bid Increment:** {auction['auction_data']['bid_increment']:,} Pokécoins",
+                f"**Bid Increment:** {auction_data.bid_increment:,} Pokécoins",
             )
 
         embed.add_field(name="Auction Details", value="\n".join(auction_info))
         embed.set_footer(
-            text=f"Bid with `{ctx.clean_prefix}auction bid {auction['auction_data']['_id']} <bid>`\n"
-            f"Ends in {converters.strfdelta(auction['auction_data']['ends'] - datetime.utcnow())} at"
+            text=f"Bid with `{ctx.clean_prefix}auction bid {auction_data._id} <bid>`\n"
+            f"Ends in {converters.strfdelta(auction_data.ends - datetime.utcnow())} at"
         )
-        embed.timestamp = auction["auction_data"]["ends"]
+        embed.timestamp = auction_data.ends
 
         await ctx.send(embed=embed)
 
