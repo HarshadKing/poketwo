@@ -333,7 +333,7 @@ class Trading(commands.Cog):
         if await self.is_in_trade(user):
             return await ctx.send(f"**{user}** is already in a trade!")
 
-        member = await ctx.bot.mongo.Member.find_one({"id": user.id}, {"suspended": 1, "suspension_reason": 1})
+        member = await ctx.bot.mongo.fetch_member_info(user)
 
         if member is None:
             return await ctx.send("That user hasn't picked a starter pokémon yet!")
