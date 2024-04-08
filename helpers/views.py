@@ -39,9 +39,9 @@ class ConfirmTermsOfServiceView(discord.ui.View):
         await self.message.edit(view=ViewTermsOfServiceView())
         self.stop()
 
-    def on_timeout(self):
+    async def on_timeout(self):
         if self.message:
-            self.message.update(view=ViewTermsOfServiceView())
+            await self.message.edit(view=ViewTermsOfServiceView())
 
 
 class ConfirmUpdatedTermsOfServiceView(discord.ui.View):
@@ -77,6 +77,6 @@ class ConfirmUpdatedTermsOfServiceView(discord.ui.View):
         )
         await self.message.edit(view=ViewTermsOfServiceView())
 
-    def on_timeout(self):
+    async def on_timeout(self):
         if self.message:
-            self.message.update(view=ViewTermsOfServiceView())
+            await self.message.edit(view=ViewTermsOfServiceView())
