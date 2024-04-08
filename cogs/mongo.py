@@ -752,12 +752,10 @@ class Mongo(commands.Cog):
         if hasattr(pokemon, "_id"):
             pokemon_id = pokemon._id
 
-        default_gender = pokemon.species.default_gender
         gender_assigned = pokemon._gender is not None
-        has_wrong_gender = gender_assigned and default_gender and pokemon._gender != default_gender
-        if (not gender_assigned or has_wrong_gender) and ("gender" not in update):
+        if not gender_assigned and ("gender" not in update):
             _set = update.setdefault("$set", {})
-            _set["gender"] = pokemon.species.default_gender or pokemon.gender
+            _set["gender"] = pokemon.gender
 
         return await self.db.pokemon.update_one({"_id": pokemon_id}, update)
 
