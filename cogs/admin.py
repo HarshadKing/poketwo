@@ -32,6 +32,9 @@ class Administration(commands.Cog):
         )
         await self.bot.redis.hdel("db:member", *[int(x.id) for x in users])
         users_msg = ", ".join(f"**{x}**" for x in users)
+
+        if ctx.message.reference:
+            await ctx.message.reference.resolved.add_reaction("✅")
         await ctx.send(f"Suspended {users_msg}.")
 
     @commands.is_owner()
@@ -55,6 +58,9 @@ class Administration(commands.Cog):
         )
         await self.bot.redis.hdel("db:member", *[int(x.id) for x in users])
         users_msg = ", ".join(f"**{x}**" for x in users)
+
+        if ctx.message.reference:
+            await ctx.message.reference.resolved.add_reaction("✅")
         await ctx.send(f"Suspended {users_msg} for {strfdelta(duration)}.")
 
     @commands.is_owner()
