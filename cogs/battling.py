@@ -1,18 +1,24 @@
+from __future__ import annotations
+
 import asyncio
 import math
 import pickle
-import typing
 from datetime import datetime
 from enum import Enum
 from urllib.parse import urlencode, urljoin
+from typing import TYPE_CHECKING, Optional, List
 
 import discord
 from discord.ext import commands, tasks
+from cogs.mongo import Pokemon
 
 import data.constants
 from data import models
 from helpers import checks, constants, converters, pagination, flags
 from helpers.utils import add_moves_field
+
+if TYPE_CHECKING:
+    from bot import ClusterBot
 
 
 def in_battle(bool=True):
@@ -57,7 +63,6 @@ class Trainer:
         return self.pokemon[self.selected_idx]
 
     async def get_action(self, message):
-
         actions = {}
 
         for idx, x in enumerate(self.selected.moves):
@@ -73,7 +78,7 @@ class Trainer:
                 actions[constants.LETTER_REACTIONS[idx]] = {
                     "type": "switch",
                     "value": idx,
-                    "text": f"Switch to {pokemon.iv_percentage:.2%} {pokemon.species}",
+                    "text": f"Switch to {pokemon:iLpgX}",
                     "command": f"switch {idx + 1}",
                 }
 
@@ -104,7 +109,9 @@ class Trainer:
 
         uid, action = await self.bot.wait_for("move_decide", check=lambda u, a: u == self.user.id)
 
-        await self.user.send(f"You selected **{action['text']}**.\n\n**Back to battle:** {message.jump_url}")
+        view = discord.ui.View(timeout=0)
+        view.add_item(discord.ui.Button(label="Back to battle", url=message.jump_url))
+        await self.user.send(f"You selected **{action['text']}**.", view=view)
 
         if action["type"] == "move":
             action["value"] = self.bot.data.move_by_number(action["value"])
@@ -112,8 +119,18 @@ class Trainer:
         return action
 
 
+def add_selection_field(embed: ClusterBot.Embed, trainer: Trainer, pokemon: List[Pokemon]):
+    if len(pokemon) > 0:
+        embed.add_field(
+            name=f"{trainer.user}'s Party",
+            value="\n".join(f"{x:iLpgX}" for x in pokemon),
+        )
+    else:
+        embed.add_field(name=f"{trainer.user}'s Party", value="None")
+
+
 class Battle:
-    def __init__(self, users: typing.List[discord.Member], ctx, manager):
+    def __init__(self, users: List[discord.Member], ctx, manager):
         self.trainers = [Trainer(x, ctx.bot) for x in users]
         self.channel = ctx.channel
         self.stage = Stage.SELECT
@@ -130,13 +147,7 @@ class Battle:
         )
 
         for trainer in self.trainers:
-            if len(trainer.pokemon) > 0:
-                embed.add_field(
-                    name=f"{trainer.user}'s Party",
-                    value="\n".join(f"{x.iv_percentage:.2%} IV {x.species} {x.gender_icon} ({x.idx})" for x in trainer.pokemon),
-                )
-            else:
-                embed.add_field(name=f"{trainer.user}'s Party", value="None")
+            add_selection_field(embed, trainer, trainer.pokemon)
 
         embed.set_footer(text=f"Use `{ctx.clean_prefix}battle add <pokemon>` to add a pokémon to the party!")
 
@@ -146,10 +157,7 @@ class Battle:
         embed = self.bot.Embed(title="💥 Ready to battle!", description="The battle will begin in 5 seconds.")
 
         for trainer in self.trainers:
-            embed.add_field(
-                name=f"{trainer.user}'s Party",
-                value="\n".join(f"{x.iv_percentage:.2%} IV {x.species} {x.gender_icon} ({x.idx})" for x in trainer.pokemon),
-            )
+            add_selection_field(embed, trainer, trainer.pokemon)
 
         await self.channel.send(embed=embed)
 
@@ -194,7 +202,7 @@ class Battle:
 
         embed = self.bot.Embed(
             title=f"Battle between {self.trainers[0].user.display_name} and {self.trainers[1].user.display_name}.",
-            description="\n".join(description)
+            description="\n".join(description),
         )
         embed.set_footer(text="The next round will begin in 5 seconds.")
 
@@ -215,7 +223,6 @@ class Battle:
                 text = f"{trainer.selected.species} is now on the field!"
 
             elif action["type"] == "move":
-
                 # calculate damage amount
 
                 move = action["value"]
@@ -342,9 +349,9 @@ class Battle:
             embed.add_field(
                 name=trainer.user.display_name,
                 value="\n".join(
-                    f"**{x.species} {x.gender_icon}** • {x.hp}/{x.max_hp} HP"
+                    f"**{x:iLpg}** • {x.hp}/{x.max_hp} HP"
                     if trainer.selected == x
-                    else f"{x.species} {x.gender_icon} • {x.hp}/{x.max_hp} HP"
+                    else f"{x:iLpg} • {x.hp}/{x.max_hp} HP"
                     for x in trainer.pokemon
                 ),
             )
@@ -396,11 +403,131 @@ class BattleManager:
         return battle
 
 
+ACTION_TIMEOUT = 35
+MOVES_ROW = 0
+SWITCH_ROW = 1
+FLEE_AND_PASS_ROW = 2
+
+
+class ActionSelect(discord.ui.Select):
+    async def callback(self, interaction):
+        await interaction.response.defer()
+
+        value = self.values[0]
+        option = discord.utils.get(self.options, value=value)
+
+        option.default = True
+        self.view.action = self.view.actions[value]
+        self.view.stop()
+
+
+class ActionButton(discord.ui.Button):
+    def __init__(self, action: dict, *args, **kwargs):
+        self.action = action
+        super().__init__(*args, **kwargs)
+
+    async def callback(self, interaction: discord.Interaction):
+        await interaction.response.defer()
+
+        self.view.action = self.action
+        self.view.stop()
+
+
+class ActionView(discord.ui.View):
+    def __init__(self, bot: ClusterBot, trainer: int, actions: dict):
+        self.bot = bot
+        self.trainer = trainer
+        self.actions = actions
+
+        self.action = None
+        self.message = None
+        super().__init__(timeout=ACTION_TIMEOUT)
+
+        self.fill_items()
+
+    def fill_items(self):
+        move_options = []
+        switch_options = []
+        for emoji, action in self.actions.items():
+            match action["type"]:
+                case "move":
+                    move = self.bot.data.move_by_number(action["value"])
+                    sprite = self.bot.sprites.get_type_sprite(move.type) or None
+
+                    move_options.append(
+                        discord.SelectOption(
+                            emoji=sprite,
+                            label=move.name,
+                            description=move.damage_class,
+                            value=emoji,
+                        )
+                    )
+                case "switch":
+                    pokemon_idx = action["value"]
+                    pokemon = self.trainer.pokemon[pokemon_idx]
+                    switch_options.append(
+                        discord.SelectOption(
+                            emoji=self.bot.sprites.get(pokemon.species.dex_number, shiny=pokemon.shiny) or None,
+                            label=f"{pokemon:LpX}",
+                            description="/".join(pokemon.species.types),
+                            value=emoji,
+                        )
+                    )
+                case "flee" | "pass":
+                    self.add_item(
+                        ActionButton(
+                            action,
+                            label=action["type"].capitalize(),
+                            row=FLEE_AND_PASS_ROW,
+                        )
+                    )
+
+        none_option = discord.SelectOption(
+            label="None",
+            value="none",
+        )
+
+        self.add_item(
+            ActionSelect(
+                options=move_options or [none_option],
+                placeholder="Use a Move",
+                row=MOVES_ROW,
+                disabled=len(move_options) == 0,
+            )
+        )
+        self.add_item(
+            ActionSelect(
+                options=switch_options or [none_option],
+                placeholder="Switch Pokémon",
+                row=SWITCH_ROW,
+                disabled=len(switch_options) == 0,
+            )
+        )
+
+    async def disable_items(self):
+        for item in self.children:
+            if getattr(item, "style", None) != discord.ButtonStyle.link:
+                item.disabled = True
+
+        if self.message:
+            await self.message.edit(view=self)
+
+    async def interaction_check(self, interaction):
+        if interaction.user.id not in {
+            self.bot.owner_id,
+            self.trainer.user.id,
+            *self.bot.owner_ids,
+        }:
+            await interaction.response.send_message("You can't use this!", ephemeral=True)
+            return False
+        return True
+
+
 class Battling(commands.Cog):
     """For battling."""
 
     def __init__(self, bot):
-        self.bot = bot
+        self.bot: ClusterBot = bot
 
         if not hasattr(self.bot, "battles"):
             self.bot.battles = BattleManager()
@@ -448,37 +575,47 @@ class Battling(commands.Cog):
 
     @commands.Cog.listener()
     async def on_move_request(self, cluster_idx, user_id, species_id, actions):
+        trainer = self.bot.battles.get_trainer(discord.Object(user_id))
         species = self.bot.data.species_by_number(species_id)
 
         embed = self.bot.Embed(title=f"What should {species} do?")
 
-        embed.description = "\n".join(
-            f"{k} **{v['text']}** • `@Pokétwo battle move {v['command']}`" for k, v in actions.items()
-        )
-        msg = await self.bot.send_dm(user_id, embed=embed)
+        available_moves = []
+        available_pokemon = []
 
-        async def add_reactions():
-            for k in actions:
-                await msg.add_reaction(k)
+        for e, a in actions.items():
+            match a["type"]:
+                case "move":
+                    move = self.bot.data.move_by_number(a["value"])
+                    sprite = f'{self.bot.sprites.get_type_sprite(move.type)} '
+                    available_moves.append(f"{sprite}{move.name}".strip())
 
-        self.bot.loop.create_task(add_reactions())
+                case "switch":
+                    pokemon = trainer.pokemon[a["value"]]
+                    available_pokemon.append(f"{pokemon:iLpgX}")
 
-        def check(payload):
-            return payload.message_id == msg.id and payload.user_id == user_id and payload.emoji.name in actions
+        embed.add_field(name="Available Moves", value="\n".join(available_moves) or "None")
 
-        async def listen_for_reactions():
-            try:
-                payload = await self.bot.wait_for("raw_reaction_add", timeout=35, check=check)
-                action = actions[payload.emoji.name]
+        embed.add_field(name="Available Pokémon", value="\n".join(available_pokemon) or "None")
+
+        embed.set_footer(text=f"You can also use `@Pokétwo battle move <move-name> | switch <idx> | flee | pass`")
+
+        view = ActionView(self.bot, trainer, actions)
+        view.message = await self.bot.send_dm(user_id, embed=embed, view=view)
+
+        async def wait_view():
+            await view.wait()
+            action = view.action
+            if action is not None:
                 self.bot.dispatch("battle_move", user_id, action["command"])
-            except asyncio.TimeoutError:
-                pass
 
-        self.bot.loop.create_task(listen_for_reactions())
+        self.bot.loop.create_task(wait_view())
 
         try:
             while True:
-                _, move_name = await self.bot.wait_for("battle_move", timeout=35, check=lambda u, m: u == user_id)
+                _, move_name = await self.bot.wait_for(
+                    "battle_move", timeout=ACTION_TIMEOUT, check=lambda u, m: u == user_id
+                )
                 try:
                     action = next(x for x in actions.values() if x["command"].lower() == move_name.lower())
                 except StopIteration:
@@ -487,6 +624,8 @@ class Battling(commands.Cog):
                     break
         except asyncio.TimeoutError:
             action = {"type": "pass", "text": "nothing. Passing turn..."}
+
+        await view.disable_items()
 
         await self.bot.redis.rpush(
             f"move_decide:{cluster_idx}",
@@ -516,7 +655,9 @@ class Battling(commands.Cog):
 
         # Challenge to battle
 
-        result = await ctx.request(user, f"Challenging {user.mention} to a battle. Click the accept button to accept!", timeout=30)
+        result = await ctx.request(
+            user, f"Challenging {user.mention} to a battle. Click the accept button to accept!", timeout=30
+        )
         if result is None:
             return await ctx.send("The request to trade has timed out.")
         if result is False:
@@ -548,16 +689,16 @@ class Battling(commands.Cog):
 
         for pokemon in args:
             if pokemon is None:
+                await ctx.send(f"Couldn't find that pokémon!")
                 continue
 
             if len(trainer.pokemon) >= 3:
                 await ctx.send(f"{pokemon.idx}: There are already enough pokémon in the party!")
                 return
 
-            for x in trainer.pokemon:
-                if x.id == pokemon.id:
-                    await ctx.send(f"{pokemon.idx}: This pokémon is already in the party!")
-                    return
+            if pokemon in trainer.pokemon:
+                await ctx.send(f"{pokemon.idx}: This pokémon is already in the party!")
+                continue
 
             pokemon.hp = pokemon.hp
             pokemon.stages = models.StatStages()
@@ -584,7 +725,7 @@ class Battling(commands.Cog):
     async def move(self, ctx, *, move):
         """Move in a battle."""
 
-        self.bot.dispatch("battle_move", ctx.author, move)
+        self.bot.dispatch("battle_move", ctx.author.id, move)
 
     @checks.has_started()
     @commands.command(aliases=("mv",), rest_is_raw=True)
@@ -763,7 +904,9 @@ class Battling(commands.Cog):
             if flags["mega"] and key not in self.bot.data.list_mega:
                 return False
 
-            if flags["name"] and key not in [i for x in flags["name"] for i in self.bot.data.find_all_matches(" ".join(x))]:
+            if flags["name"] and key not in [
+                i for x in flags["name"] for i in self.bot.data.find_all_matches(" ".join(x))
+            ]:
                 return False
 
             if flags["type"] and key not in [i for x in flags["type"] for i in self.bot.data.list_type(x)]:
@@ -772,7 +915,9 @@ class Battling(commands.Cog):
             if flags["region"] and key not in [i for x in flags["region"] for i in self.bot.data.list_region(x)]:
                 return False
 
-            if flags["learns"] and key not in [i for x in flags["learns"] for i in self.bot.data.list_move(" ".join(x))]:
+            if flags["learns"] and key not in [
+                i for x in flags["learns"] for i in self.bot.data.list_move(" ".join(x))
+            ]:
                 return False
 
             return True
@@ -780,7 +925,10 @@ class Battling(commands.Cog):
         # Get list of (Species, [PokemonMove objects]) tuples of each
         # species that can learn this move (if provided, otherwise any move) and matches the flags.
         pokemon = [
-            (p := self.bot.data.species_by_number(sid), [pm for pm in p.moves if pm.move.name == move.name] if move else None)
+            (
+                p := self.bot.data.species_by_number(sid),
+                [pm for pm in p.moves if pm.move.name == move.name] if move else None,
+            )
             for sid in self.bot.data.list_move(move.name if move else None)
             if include(sid)
         ]
@@ -806,7 +954,10 @@ class Battling(commands.Cog):
                 except KeyError:
                     emoji = ""
 
-                embed.add_field(name=f"{emoji}{species.name} #{species.id}", value=" / ".join(pm.method.text for pm in pokemon_moves) if move else "—")
+                embed.add_field(
+                    name=f"{emoji}{species.name} #{species.id}",
+                    value=" / ".join(pm.method.text for pm in pokemon_moves) if move else "—",
+                )
 
             for i in range(-pgend % 3):
                 embed.add_field(name="‎", value="‎")
@@ -834,7 +985,6 @@ class Battling(commands.Cog):
             ("Accuracy", "accuracy"),
             ("PP", "pp"),
             ("Priority", "priority"),
-            ("Type", "type"),
         ):
             if getattr(move, x) is not None:
                 v = getattr(move, x)  # yeah, i had to remove walrus op cuz its just too bad lol
@@ -842,7 +992,10 @@ class Battling(commands.Cog):
             else:
                 embed.add_field(name=name, value="—")
 
-        embed.add_field(name="Class", value=move.damage_class)
+        embed.add_field(name="Type", value=f"{self.bot.sprites.get_type_sprite(move.type)} {move.type}")
+
+        class_sprite = self.bot.sprites[f"class_{move.damage_class.lower()}"].replace("_", move.damage_class, 1)
+        embed.add_field(name="Class", value=f"{class_sprite} {move.damage_class}")
 
         await ctx.send(embed=embed)
 

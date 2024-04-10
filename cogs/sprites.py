@@ -2226,7 +2226,28 @@ other = {
     "egg_red_white": 1222270098589614080,
     "egg_red_gray": 1222269988392538274,
     "egg_yellow_white": 1222270096186146908,
-    "egg_yellow_gray": 1222269985691537500
+    "egg_yellow_gray": 1222269985691537500,
+    "class_physical": 1158740448811171890,
+    "class_status": 1158740464984404038,
+    "class_special": 1158741864619442266,
+    "type_water": 1158743055436881921,
+    "type_bug": 1158743062449762366,
+    "type_dark": 1158743069840113675,
+    "type_dragon": 1158743078161621042,
+    "type_electric": 1158743085610717214,
+    "type_fairy": 1158743092975911002,
+    "type_fighting": 1158743101419028511,
+    "type_fire": 1158743108423536711,
+    "type_flying": 1158743116816326747,
+    "type_ghost": 1158743125628559460,
+    "type_grass": 1158743133765517383,
+    "type_ground": 1158743141487214623,
+    "type_ice": 1158743149527715903,
+    "type_normal": 1158743156666400778,
+    "type_poison": 1158743164551704669,
+    "type_psychic": 1158743172688646256,
+    "type_rock": 1158743180552982579,
+    "type_steel": 1158743189050638366,
 }
 
 enable_emojis_for = (716390085896962058, 717112814535442432, 848517317469405214, 787517063647854593)
@@ -2255,6 +2276,12 @@ class Sprites(commands.Cog):
                 return f"<:_:{pokemon.shiny[idx]}>"
             return f"<:_:{pokemon.normal[idx]}>"
         return ""
+
+    def get_type_sprite(self, type: str) -> str:
+        if self.status:
+            return f'<:{type.title()}:{other[f"type_{type.lower()}"]}>'
+        else:
+            return ""
 
 
 async def setup(bot: commands.Bot):

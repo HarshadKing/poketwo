@@ -1330,7 +1330,7 @@ class Pokemon(commands.Cog):
             else:
                 gender_rate = f"{constants.GENDER_EMOTES['male']} {species.gender_ratios[0]}% - {constants.GENDER_EMOTES['female']} {species.gender_ratios[1]}%"
 
-            embed.add_field(name="Types", value="\n".join(species.types))
+            embed.add_field(name="Types", value="\n".join(f"{self.bot.sprites.get_type_sprite(t)} {t}" for t in species.types))
             embed.add_field(name="Region", value=species.region.title())
             embed.add_field(name="Catchable", value="Yes" if species.catchable else "No")
 

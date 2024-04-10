@@ -121,6 +121,9 @@ class PokemonBase(MixinDocument):
         if "x" in spec:
             name += f" No. {self.idx}"
 
+        if "X" in spec:
+            name += f" (#{self.idx})"
+
         return name
 
     def __str__(self):
