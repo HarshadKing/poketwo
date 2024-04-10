@@ -6,7 +6,7 @@ import pickle
 from datetime import datetime
 from enum import Enum
 from urllib.parse import urlencode, urljoin
-from typing import TYPE_CHECKING, Optional, List
+from typing import TYPE_CHECKING, Any, Optional, List, Tuple
 
 import discord
 from discord.ext import commands, tasks
@@ -100,7 +100,7 @@ class Trainer:
             pickle.dumps(
                 {
                     "cluster_idx": self.bot.cluster_idx,
-                    "user_id": self.user.id,
+                    "trainer_data": {"user_id": self.user.id, "pokemon": [p.to_mongo() for p in self.pokemon]},
                     "species_id": self.selected.species.id,
                     "actions": actions,
                 }
@@ -434,9 +434,9 @@ class ActionButton(discord.ui.Button):
 
 
 class ActionView(discord.ui.View):
-    def __init__(self, bot: ClusterBot, trainer: int, actions: dict):
+    def __init__(self, bot: ClusterBot, trainer_data: dict, actions: dict):
         self.bot = bot
-        self.trainer = trainer
+        self.trainer_data = trainer_data
         self.actions = actions
 
         self.action = None
@@ -464,7 +464,8 @@ class ActionView(discord.ui.View):
                     )
                 case "switch":
                     pokemon_idx = action["value"]
-                    pokemon = self.trainer.pokemon[pokemon_idx]
+                    pokemon_data = self.trainer_data["pokemon"][pokemon_idx]
+                    pokemon = self.bot.mongo.Pokemon.build_from_mongo(pokemon_data)
                     switch_options.append(
                         discord.SelectOption(
                             emoji=self.bot.sprites.get(pokemon.species.dex_number, shiny=pokemon.shiny) or None,
@@ -515,7 +516,7 @@ class ActionView(discord.ui.View):
     async def interaction_check(self, interaction):
         if interaction.user.id not in {
             self.bot.owner_id,
-            self.trainer.user.id,
+            self.trainer_data["user_id"],
             *self.bot.owner_ids,
         }:
             await interaction.response.send_message("You can't use this!", ephemeral=True)
@@ -549,7 +550,7 @@ class Battling(commands.Cog):
             self.bot.dispatch(
                 "move_request",
                 data["cluster_idx"],
-                data["user_id"],
+                data["trainer_data"],
                 data["species_id"],
                 data["actions"],
             )
@@ -574,8 +575,8 @@ class Battling(commands.Cog):
         await self.bot.wait_until_ready()
 
     @commands.Cog.listener()
-    async def on_move_request(self, cluster_idx, user_id, species_id, actions):
-        trainer = self.bot.battles.get_trainer(discord.Object(user_id))
+    async def on_move_request(self, cluster_idx: int, trainer_data: dict, species_id: int, actions: dict):
+        user_id = trainer_data["user_id"]
         species = self.bot.data.species_by_number(species_id)
 
         embed = self.bot.Embed(title=f"What should {species} do?")
@@ -591,7 +592,8 @@ class Battling(commands.Cog):
                     available_moves.append(f"{sprite}{move.name}".strip())
 
                 case "switch":
-                    pokemon = trainer.pokemon[a["value"]]
+                    pokemon_data = trainer_data["pokemon"][a["value"]]
+                    pokemon = self.bot.mongo.Pokemon.build_from_mongo(pokemon_data)
                     available_pokemon.append(f"{pokemon:iLpgX}")
 
         embed.add_field(name="Available Moves", value="\n".join(available_moves) or "None")
@@ -600,7 +602,7 @@ class Battling(commands.Cog):
 
         embed.set_footer(text=f"You can also use `@Pokétwo battle move <move-name> | switch <idx> | flee | pass`")
 
-        view = ActionView(self.bot, trainer, actions)
+        view = ActionView(self.bot, trainer_data, actions)
         view.message = await self.bot.send_dm(user_id, embed=embed, view=view)
 
         async def wait_view():
