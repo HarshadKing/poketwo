@@ -1264,8 +1264,10 @@ class Pokemon(commands.Cog):
                     search_parts.pop(0)
 
                 # Check if a specific gender is queried
-                if search_parts[0].capitalize() in GENDER_TYPES.values():
-                    searched_gender = search_parts.pop(0).capitalize()
+                first_part = search_parts[0].capitalize()
+                if first_part in GENDER_TYPES.values() and first_part != "Unknown":
+                    searched_gender = first_part
+                    search_parts.pop(0)
 
                 search = " ".join(search_parts)
                 species = self.bot.data.species_by_name(search)
